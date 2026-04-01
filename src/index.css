@@ -1,0 +1,228 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 40 25% 97%;
+    --foreground: 220 20% 14%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 20% 14%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 20% 14%;
+
+    --primary: 175 45% 38%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 40 18% 93%;
+    --secondary-foreground: 220 15% 25%;
+
+    --muted: 40 12% 93%;
+    --muted-foreground: 220 10% 50%;
+
+    --accent: 42 70% 52%;
+    --accent-foreground: 30 60% 15%;
+
+    --destructive: 0 65% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 40 15% 90%;
+    --input: 40 15% 87%;
+    --ring: 175 45% 38%;
+
+    --radius: 1rem;
+
+    /* Owner colors */
+    --kamilla: 340 55% 52%;
+    --kamilla-light: 340 45% 95%;
+    --kamilla-foreground: 340 55% 25%;
+    --doszhan: 195 55% 40%;
+    --doszhan-light: 195 45% 94%;
+    --doszhan-foreground: 195 55% 18%;
+
+    /* Category colors */
+    --cat-home: 32 75% 50%;
+    --cat-home-light: 32 60% 93%;
+    --cat-work: 245 45% 55%;
+    --cat-work-light: 245 40% 95%;
+
+    /* Status colors */
+    --status-todo: 220 10% 60%;
+    --status-progress: 42 80% 48%;
+    --status-done: 160 50% 40%;
+    --status-done-light: 160 40% 94%;
+
+    /* Ethno accent — used sparingly */
+    --ethno-gold: 42 75% 52%;
+    --ethno-gold-light: 42 60% 94%;
+    --ethno-teal: 175 45% 38%;
+    --ethno-red: 5 60% 48%;
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 220 18% 7%;
+    --foreground: 40 15% 90%;
+    --card: 220 16% 10%;
+    --card-foreground: 40 15% 90%;
+    --popover: 220 16% 10%;
+    --popover-foreground: 40 15% 90%;
+    --primary: 175 45% 42%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 12% 15%;
+    --secondary-foreground: 40 15% 82%;
+    --muted: 220 12% 15%;
+    --muted-foreground: 220 10% 52%;
+    --accent: 42 70% 48%;
+    --accent-foreground: 42 70% 95%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 220 12% 18%;
+    --input: 220 12% 18%;
+    --ring: 175 45% 42%;
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  html[data-font-scale='sm'] {
+    font-size: 14px;
+  }
+
+  html[data-font-scale='md'] {
+    font-size: 16px;
+  }
+
+  html[data-font-scale='lg'] {
+    font-size: 18px;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'Inter', sans-serif;
+    overflow-x: hidden;
+    background-image:
+      radial-gradient(circle at top left, hsl(var(--primary) / 0.12), transparent 28%),
+      radial-gradient(circle at top right, hsl(var(--accent) / 0.10), transparent 24%),
+      linear-gradient(180deg, hsl(40 45% 98%), hsl(var(--background)));
+    background-attachment: fixed;
+  }
+
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+
+  h1, h2, h3 {
+    font-family: 'Playfair Display', serif;
+  }
+}
+
+/* Subtle ethno ornament as watermark/background */
+.ethno-watermark {
+  position: relative;
+}
+.ethno-watermark::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 80' fill='none'%3E%3Cpath d='M40 10 C25 10 10 25 10 40 C10 55 25 70 40 70 C55 70 70 55 70 40 C70 25 55 10 40 10Z' stroke='%23C8A856' stroke-width='0.5' opacity='0.06'/%3E%3Cpath d='M40 20 C30 20 20 30 20 40 C20 50 30 60 40 60 C50 60 60 50 60 40 C60 30 50 20 40 20Z' stroke='%23C8A856' stroke-width='0.5' opacity='0.04'/%3E%3Cpath d='M20 40 Q30 25 40 40 Q50 55 60 40' stroke='%23C8A856' stroke-width='0.5' opacity='0.05'/%3E%3Cpath d='M40 20 Q25 30 40 40 Q55 50 40 60' stroke='%23C8A856' stroke-width='0.5' opacity='0.05'/%3E%3C/svg%3E");
+  background-size: 120px 120px;
+  pointer-events: none;
+  z-index: 0;
+  border-radius: inherit;
+}
+.ethno-watermark > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Thin ethno accent line */
+.ethno-line {
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    hsl(var(--ethno-gold)) 15%,
+    hsl(var(--ethno-teal)) 50%,
+    hsl(var(--ethno-gold)) 85%,
+    transparent 100%
+  );
+  opacity: 0.4;
+  border-radius: 1px;
+}
+
+/* Legacy divider */
+.ethno-divider {
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    hsl(var(--ethno-gold) / 0.3),
+    hsl(var(--ethno-teal) / 0.3),
+    hsl(var(--ethno-gold) / 0.3),
+    transparent
+  );
+  border-radius: 1px;
+}
+
+/* Card hover lift */
+.card-hover {
+  @apply transition-all duration-200;
+}
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px -8px hsl(var(--foreground) / 0.08);
+}
+
+/* Quote card left border */
+.quote-border {
+  border-left: 3px solid hsl(var(--ethno-gold));
+}
+
+/* Scrollbar for filter chips */
+.chips-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.chips-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.dashboard-hero {
+  background:
+    radial-gradient(circle at 15% 20%, hsl(var(--primary) / 0.18), transparent 26%),
+    radial-gradient(circle at 82% 18%, hsl(var(--accent) / 0.12), transparent 24%),
+    linear-gradient(135deg, hsl(var(--background)), hsl(42 55% 97%));
+}
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.safe-area-top {
+  padding-top: env(safe-area-inset-top);
+}
