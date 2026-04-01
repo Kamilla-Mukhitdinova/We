@@ -152,7 +152,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
               </button>
 
               <div className="rounded-2xl bg-secondary/60 p-4 text-xs leading-5 text-muted-foreground">
-                Текущие стартовые пароли: kamilla123 для Kamilla и doszhan123 для Doszhan. После входа пароль можно поменять в профиле.
+                Войдите под своим именем и личным паролем. После входа пароль можно поменять в профиле.
                 {syncError ? ` ${syncError}.` : ''}
               </div>
             </form>
