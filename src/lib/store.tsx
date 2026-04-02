@@ -15,6 +15,9 @@ import { getOwnerByEmail, isSupabaseConfigured, ownerEmailMap, SUPABASE_STATE_RO
 type SyncStatus = 'idle' | 'syncing' | 'online' | 'error';
 type StorageMode = 'local' | 'shared';
 
+const READ_TIMEOUT_MS = 15000;
+const WRITE_TIMEOUT_MS = 45000;
+
 interface PairSettingsRow {
   pair_id: string;
   categories: string[] | null;
@@ -442,7 +445,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setSyncStatus('syncing');
         setCurrentPairId(SUPABASE_STATE_ROW_ID);
         const remoteSnapshot = await retryWithBackoff(
-          () => withTimeout(loadSharedSnapshot(SUPABASE_STATE_ROW_ID), 'loadSharedSnapshot', 15000),
+          () => withTimeout(loadSharedSnapshot(SUPABASE_STATE_ROW_ID), 'loadSharedSnapshot', READ_TIMEOUT_MS),
           'loadSharedSnapshot'
         );
         const hasRemoteContent =
@@ -452,7 +455,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
         if (!hasRemoteContent) {
           await retryWithBackoff(
-            () => withTimeout(replaceSharedSnapshot(SUPABASE_STATE_ROW_ID, initialSnapshot), 'replaceSharedSnapshot', 15000),
+            () => withTimeout(replaceSharedSnapshot(SUPABASE_STATE_ROW_ID, initialSnapshot), 'replaceSharedSnapshot', WRITE_TIMEOUT_MS),
             'replaceSharedSnapshot',
             2,
             2000
@@ -499,7 +502,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setSyncStatus('syncing');
         setCurrentPairId(SUPABASE_STATE_ROW_ID);
         const remoteSnapshot = await retryWithBackoff(
-          () => withTimeout(loadSharedSnapshot(SUPABASE_STATE_ROW_ID), 'loadSharedSnapshot', 15000),
+          () => withTimeout(loadSharedSnapshot(SUPABASE_STATE_ROW_ID), 'loadSharedSnapshot', READ_TIMEOUT_MS),
           'loadSharedSnapshot'
         );
         const hasRemoteContent =
@@ -509,7 +512,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
         if (!hasRemoteContent) {
           await retryWithBackoff(
-            () => withTimeout(replaceSharedSnapshot(SUPABASE_STATE_ROW_ID, initialSnapshot), 'replaceSharedSnapshot', 15000),
+            () => withTimeout(replaceSharedSnapshot(SUPABASE_STATE_ROW_ID, initialSnapshot), 'replaceSharedSnapshot', WRITE_TIMEOUT_MS),
             'replaceSharedSnapshot',
             2,
             2000
@@ -552,7 +555,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     syncTimerRef.current = window.setTimeout(async () => {
       try {
-        await withTimeout(replaceSharedSnapshot(currentPairId, snapshot), 'replaceSharedSnapshot');
+        await withTimeout(replaceSharedSnapshot(currentPairId, snapshot), 'replaceSharedSnapshot', WRITE_TIMEOUT_MS);
         setSyncStatus('online');
         setSyncError(null);
       } catch (error) {
@@ -578,7 +581,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       remoteRefreshTimerRef.current = window.setTimeout(async () => {
         try {
-          const remoteSnapshot = await withTimeout(loadSharedSnapshot(currentPairId), 'loadSharedSnapshot');
+          const remoteSnapshot = await withTimeout(loadSharedSnapshot(currentPairId), 'loadSharedSnapshot', READ_TIMEOUT_MS);
           applyRemoteSnapshot(remoteSnapshot);
           setSyncStatus('online');
           setSyncError(null);
