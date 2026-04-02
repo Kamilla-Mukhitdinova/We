@@ -156,6 +156,31 @@ async function withTimeout<T>(promise: Promise<T>, label: string, timeoutMs = 12
   }
 }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+async function retryWithBackoff<T>(
+  task: () => Promise<T>,
+  label: string,
+  attempts = 3,
+  baseDelayMs = 2500
+): Promise<T> {
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await task();
+    } catch (error) {
+      lastError = error;
+      if (attempt === attempts) break;
+      await sleep(baseDelayMs * attempt);
+    }
+  }
+
+  throw new Error(`${label} failed after ${attempts} attempts: ${getErrorMessage(lastError, label)}`);
+}
+
 function mapTaskRowToTask({ pair_id: _pairId, repeat_days, completion_dates, due_date_time, created_at, completed_at, ...task }: TaskRow): Task {
   return {
     ...task,
@@ -440,17 +465,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       try {
         setSyncStatus('syncing');
-        const profile = await withTimeout(fetchProfile(data.session.user.id), 'fetchProfile');
+        const profile = await retryWithBackoff(
+          () => withTimeout(fetchProfile(data.session.user.id), 'fetchProfile', 30000),
+          'fetchProfile'
+        );
         setActiveUser(profile.owner);
         setCurrentPairId(profile.pair_id);
-        const remoteSnapshot = await withTimeout(loadSharedSnapshot(profile.pair_id), 'loadSharedSnapshot');
+        const remoteSnapshot = await retryWithBackoff(
+          () => withTimeout(loadSharedSnapshot(profile.pair_id), 'loadSharedSnapshot', 30000),
+          'loadSharedSnapshot'
+        );
         const hasRemoteContent =
           remoteSnapshot.tasks.length > 0 ||
           remoteSnapshot.wishes.length > 0 ||
           remoteSnapshot.dailyWishes.length > 0;
 
         if (!hasRemoteContent) {
-          await withTimeout(replaceSharedSnapshot(profile.pair_id, initialSnapshot), 'replaceSharedSnapshot');
+          await retryWithBackoff(
+            () => withTimeout(replaceSharedSnapshot(profile.pair_id, initialSnapshot), 'replaceSharedSnapshot', 30000),
+            'replaceSharedSnapshot',
+            2,
+            3000
+          );
           applyRemoteSnapshot(initialSnapshot);
         } else {
           applyRemoteSnapshot(remoteSnapshot);
@@ -491,17 +527,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       try {
         setSyncStatus('syncing');
-        const profile = await withTimeout(fetchProfile(session.user.id), 'fetchProfile');
+        const profile = await retryWithBackoff(
+          () => withTimeout(fetchProfile(session.user.id), 'fetchProfile', 30000),
+          'fetchProfile'
+        );
         setActiveUser(profile.owner);
         setCurrentPairId(profile.pair_id);
-        const remoteSnapshot = await withTimeout(loadSharedSnapshot(profile.pair_id), 'loadSharedSnapshot');
+        const remoteSnapshot = await retryWithBackoff(
+          () => withTimeout(loadSharedSnapshot(profile.pair_id), 'loadSharedSnapshot', 30000),
+          'loadSharedSnapshot'
+        );
         const hasRemoteContent =
           remoteSnapshot.tasks.length > 0 ||
           remoteSnapshot.wishes.length > 0 ||
           remoteSnapshot.dailyWishes.length > 0;
 
         if (!hasRemoteContent) {
-          await withTimeout(replaceSharedSnapshot(profile.pair_id, initialSnapshot), 'replaceSharedSnapshot');
+          await retryWithBackoff(
+            () => withTimeout(replaceSharedSnapshot(profile.pair_id, initialSnapshot), 'replaceSharedSnapshot', 30000),
+            'replaceSharedSnapshot',
+            2,
+            3000
+          );
           applyRemoteSnapshot(initialSnapshot);
         } else {
           applyRemoteSnapshot(remoteSnapshot);
