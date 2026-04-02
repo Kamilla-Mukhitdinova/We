@@ -23,16 +23,45 @@ interface PairSettingsRow {
   updated_at?: string;
 }
 
-interface TaskRow extends Task {
+interface TaskRow {
+  id: string;
   pair_id: string;
+  title: string;
+  description?: string;
+  category: string;
+  kind: Task['kind'];
+  recurrence?: Task['recurrence'];
+  repeat_days: number[];
+  completion_dates: string[];
+  status: Task['status'];
+  due_date_time?: string;
+  owner: Owner;
+  created_at: string;
+  completed_at?: string;
 }
 
-interface WishRow extends Wish {
+interface WishRow {
+  id: string;
   pair_id: string;
+  title: string;
+  notes?: string;
+  image_url?: string;
+  category?: string;
+  owner: Owner;
+  scope: Wish['scope'];
+  status: Wish['status'];
+  created_at: string;
+  achieved_at?: string;
 }
 
-interface DailyWishRow extends DailyWishMessage {
+interface DailyWishRow {
+  id: string;
   pair_id: string;
+  from: Owner;
+  to: Owner;
+  message: string;
+  date: string;
+  created_at: string;
 }
 
 interface ProfileRow {
@@ -96,6 +125,80 @@ function getEmptySnapshot() {
   return normalizeSharedSnapshot({});
 }
 
+function mapTaskRowToTask({ pair_id: _pairId, repeat_days, completion_dates, due_date_time, created_at, completed_at, ...task }: TaskRow): Task {
+  return {
+    ...task,
+    repeatDays: repeat_days,
+    completionDates: completion_dates,
+    dueDateTime: due_date_time,
+    createdAt: created_at,
+    completedAt: completed_at,
+  };
+}
+
+function mapTaskToTaskRow(pairId: string, task: Task): TaskRow {
+  return {
+    id: task.id,
+    pair_id: pairId,
+    title: task.title,
+    description: task.description,
+    category: task.category,
+    kind: task.kind,
+    recurrence: task.recurrence,
+    repeat_days: task.repeatDays ?? [],
+    completion_dates: task.completionDates ?? [],
+    status: task.status,
+    due_date_time: task.dueDateTime,
+    owner: task.owner,
+    created_at: task.createdAt,
+    completed_at: task.completedAt,
+  };
+}
+
+function mapWishRowToWish({ pair_id: _pairId, image_url, created_at, achieved_at, ...wish }: WishRow): Wish {
+  return {
+    ...wish,
+    imageUrl: image_url,
+    createdAt: created_at,
+    achievedAt: achieved_at,
+  };
+}
+
+function mapWishToWishRow(pairId: string, wish: Wish): WishRow {
+  return {
+    id: wish.id,
+    pair_id: pairId,
+    title: wish.title,
+    notes: wish.notes,
+    image_url: wish.imageUrl,
+    category: wish.category,
+    owner: wish.owner,
+    scope: wish.scope,
+    status: wish.status,
+    created_at: wish.createdAt,
+    achieved_at: wish.achievedAt,
+  };
+}
+
+function mapDailyWishRowToDailyWish({ pair_id: _pairId, created_at, ...wish }: DailyWishRow): DailyWishMessage {
+  return {
+    ...wish,
+    createdAt: created_at,
+  };
+}
+
+function mapDailyWishToDailyWishRow(pairId: string, wish: DailyWishMessage): DailyWishRow {
+  return {
+    id: wish.id,
+    pair_id: pairId,
+    from: wish.from,
+    to: wish.to,
+    message: wish.message,
+    date: wish.date,
+    created_at: wish.createdAt,
+  };
+}
+
 async function fetchProfile(userId: string): Promise<ProfileRow> {
   if (!supabase) {
     throw new Error('Supabase is not configured');
@@ -145,11 +248,9 @@ async function loadSharedSnapshot(pairId: string): Promise<SharedAppSnapshot> {
   }
 
   return normalizeSharedSnapshot({
-    tasks: (tasksResult.data ?? []).map(({ pair_id: _pairId, ...task }) => task as Task),
-    wishes: (wishesResult.data ?? []).map(({ pair_id: _pairId, ...wish }) => wish as Wish),
-    dailyWishes: (dailyWishesResult.data ?? []).map(
-      ({ pair_id: _pairId, ...wish }) => wish as DailyWishMessage
-    ),
+    tasks: (tasksResult.data ?? []).map((task) => mapTaskRowToTask(task as TaskRow)),
+    wishes: (wishesResult.data ?? []).map((wish) => mapWishRowToWish(wish as WishRow)),
+    dailyWishes: (dailyWishesResult.data ?? []).map((wish) => mapDailyWishRowToDailyWish(wish as DailyWishRow)),
     categories: settingsResult.data?.categories ?? undefined,
     wishCategories: settingsResult.data?.wish_categories ?? undefined,
     customHadiths: settingsResult.data?.custom_hadiths ?? undefined,
@@ -168,20 +269,11 @@ async function replaceSharedSnapshot(pairId: string, snapshot: SharedAppSnapshot
     updated_at: new Date().toISOString(),
   };
 
-  const tasksPayload: TaskRow[] = snapshot.tasks.map((task) => ({
-    ...task,
-    pair_id: pairId,
-  }));
-
-  const wishesPayload: WishRow[] = snapshot.wishes.map((wish) => ({
-    ...wish,
-    pair_id: pairId,
-  }));
-
-  const dailyWishesPayload: DailyWishRow[] = snapshot.dailyWishes.map((wish) => ({
-    ...wish,
-    pair_id: pairId,
-  }));
+  const tasksPayload: TaskRow[] = snapshot.tasks.map((task) => mapTaskToTaskRow(pairId, task));
+  const wishesPayload: WishRow[] = snapshot.wishes.map((wish) => mapWishToWishRow(pairId, wish));
+  const dailyWishesPayload: DailyWishRow[] = snapshot.dailyWishes.map((wish) =>
+    mapDailyWishToDailyWishRow(pairId, wish)
+  );
 
   const { error: settingsError } = await supabase.from('pair_settings').upsert(settingsPayload);
   if (settingsError) throw settingsError;
