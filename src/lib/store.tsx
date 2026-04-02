@@ -405,6 +405,33 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [applySnapshot]
   );
 
+  const hydrateSharedInBackground = useCallback(async (pairId: string) => {
+    if (!supabase) return;
+
+    try {
+      const remoteSnapshot = await withTimeout(loadSharedSnapshot(pairId), 'loadSharedSnapshot', READ_TIMEOUT_MS);
+      const hasRemoteContent =
+        remoteSnapshot.tasks.length > 0 ||
+        remoteSnapshot.wishes.length > 0 ||
+        remoteSnapshot.dailyWishes.length > 0;
+
+      if (!hasRemoteContent) {
+        await withTimeout(replaceSharedSnapshot(pairId, snapshot), 'replaceSharedSnapshot', WRITE_TIMEOUT_MS);
+        applyRemoteSnapshot(snapshot);
+      } else {
+        applyRemoteSnapshot(remoteSnapshot);
+      }
+
+      hasHydratedSharedRef.current = true;
+      setSyncStatus('online');
+      setSyncError(null);
+    } catch (error) {
+      hasHydratedSharedRef.current = true;
+      setSyncStatus('online');
+      setSyncError(getErrorMessage(error, 'Не удалось обновить данные пары, пока используем сохранённые данные.'));
+    }
+  }, [applyRemoteSnapshot, snapshot]);
+
   useEffect(() => {
     localStorage.setItem(LOCAL_KEYS.activeUser, JSON.stringify(activeUser));
   }, [activeUser]);
@@ -452,44 +479,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       setActiveUser(owner);
       setIsAuthenticated(true);
+      setCurrentPairId(SUPABASE_STATE_ROW_ID);
+      hasHydratedSharedRef.current = true;
+      setSyncStatus('online');
+      setSyncError(null);
+      setIsBootstrapping(false);
 
-      try {
-        setSyncStatus('syncing');
-        setCurrentPairId(SUPABASE_STATE_ROW_ID);
-        await withTimeout(warmUpSharedSnapshot(SUPABASE_STATE_ROW_ID), 'warmUpSharedSnapshot', READ_TIMEOUT_MS);
-        const remoteSnapshot = await withTimeout(
-          loadSharedSnapshot(SUPABASE_STATE_ROW_ID),
-          'loadSharedSnapshot',
-          READ_TIMEOUT_MS
-        );
-        const hasRemoteContent =
-          remoteSnapshot.tasks.length > 0 ||
-          remoteSnapshot.wishes.length > 0 ||
-          remoteSnapshot.dailyWishes.length > 0;
-
-        if (!hasRemoteContent) {
-          await retryWithBackoff(
-            () => withTimeout(replaceSharedSnapshot(SUPABASE_STATE_ROW_ID, initialSnapshot), 'replaceSharedSnapshot', WRITE_TIMEOUT_MS),
-            'replaceSharedSnapshot',
-            2,
-            2000
-          );
-          applyRemoteSnapshot(initialSnapshot);
-        } else {
-          applyRemoteSnapshot(remoteSnapshot);
-        }
-
-        hasHydratedSharedRef.current = true;
-        setSyncStatus('online');
-        setSyncError(null);
-      } catch (error) {
-        setCurrentPairId(SUPABASE_STATE_ROW_ID);
-        hasHydratedSharedRef.current = false;
-        setSyncStatus('error');
-        setSyncError(getErrorMessage(error, 'Вход выполнен, но не удалось загрузить данные пары из Supabase. Пока используем локальные данные.'));
-      } finally {
-        setIsBootstrapping(false);
-      }
+      void hydrateSharedInBackground(SUPABASE_STATE_ROW_ID);
     };
 
     hydrateSession();
@@ -510,52 +506,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
       setActiveUser(owner);
       setIsAuthenticated(true);
-      setIsBootstrapping(true);
-
-      try {
-        setSyncStatus('syncing');
-        setCurrentPairId(SUPABASE_STATE_ROW_ID);
-        await withTimeout(warmUpSharedSnapshot(SUPABASE_STATE_ROW_ID), 'warmUpSharedSnapshot', READ_TIMEOUT_MS);
-        const remoteSnapshot = await withTimeout(
-          loadSharedSnapshot(SUPABASE_STATE_ROW_ID),
-          'loadSharedSnapshot',
-          READ_TIMEOUT_MS
-        );
-        const hasRemoteContent =
-          remoteSnapshot.tasks.length > 0 ||
-          remoteSnapshot.wishes.length > 0 ||
-          remoteSnapshot.dailyWishes.length > 0;
-
-        if (!hasRemoteContent) {
-          await retryWithBackoff(
-            () => withTimeout(replaceSharedSnapshot(SUPABASE_STATE_ROW_ID, initialSnapshot), 'replaceSharedSnapshot', WRITE_TIMEOUT_MS),
-            'replaceSharedSnapshot',
-            2,
-            2000
-          );
-          applyRemoteSnapshot(initialSnapshot);
-        } else {
-          applyRemoteSnapshot(remoteSnapshot);
-        }
-
-        hasHydratedSharedRef.current = true;
-        setSyncStatus('online');
-        setSyncError(null);
-      } catch (error) {
-        setCurrentPairId(SUPABASE_STATE_ROW_ID);
-        hasHydratedSharedRef.current = false;
-        setSyncStatus('error');
-        setSyncError(getErrorMessage(error, 'Вход выполнен, но данные пары не загрузились из Supabase. Пока используем локальный режим.'));
-      } finally {
-        setIsBootstrapping(false);
-      }
+      setCurrentPairId(SUPABASE_STATE_ROW_ID);
+      hasHydratedSharedRef.current = true;
+      setSyncStatus('online');
+      setSyncError(null);
+      setIsBootstrapping(false);
+      void hydrateSharedInBackground(SUPABASE_STATE_ROW_ID);
     });
 
     return () => {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [applyRemoteSnapshot]);
+  }, [hydrateSharedInBackground]);
 
   useEffect(() => {
     if (!supabase || !isAuthenticated || !currentPairId || !hasHydratedSharedRef.current) return;
