@@ -39,11 +39,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <div className="hidden md:flex flex-col gap-1">
               <div className="inline-flex items-center rounded-full bg-secondary px-3 py-1 text-[11px] font-medium text-muted-foreground">
                 {storageMode === 'shared'
-                  ? syncStatus === 'online'
-                    ? 'Supabase подключен'
-                    : syncStatus === 'syncing'
-                      ? 'Supabase синхронизируется'
-                      : 'Supabase недоступен'
+                  ? syncStatus === 'error'
+                    ? 'Supabase недоступен'
+                    : 'Supabase подключен'
                   : 'Локальный режим'}
               </div>
               {syncError && (
