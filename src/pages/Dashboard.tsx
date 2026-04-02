@@ -77,10 +77,11 @@ export default function Dashboard() {
   const todayTasks = tasks.filter((task) => isTaskForDate(task, todayDate));
   const kamillaTasks = todayTasks.filter((task) => task.owner === 'Kamilla');
   const doszhanTasks = todayTasks.filter((task) => task.owner === 'Doszhan');
-  const stats = [
-    buildOwnerStats('Kamilla', kamillaTasks.length, kamillaTasks.filter((task) => getTaskStatusForDate(task, todayDate) === 'done').length),
-    buildOwnerStats('Doszhan', doszhanTasks.length, doszhanTasks.filter((task) => getTaskStatusForDate(task, todayDate) === 'done').length),
-  ];
+  const statsByOwner = {
+    Kamilla: buildOwnerStats('Kamilla', kamillaTasks.length, kamillaTasks.filter((task) => getTaskStatusForDate(task, todayDate) === 'done').length),
+    Doszhan: buildOwnerStats('Doszhan', doszhanTasks.length, doszhanTasks.filter((task) => getTaskStatusForDate(task, todayDate) === 'done').length),
+  };
+  const stats = [statsByOwner[activeUser], statsByOwner[partner]];
 
   const myTodayTasks = useMemo(
     () => tasks.filter((task) => task.owner === activeUser && isTaskForDate(task, todayDate)),
