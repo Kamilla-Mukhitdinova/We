@@ -15,7 +15,7 @@ import { getOwnerByEmail, isSupabaseConfigured, ownerEmailMap, SUPABASE_STATE_RO
 type SyncStatus = 'idle' | 'syncing' | 'online' | 'error';
 type StorageMode = 'local' | 'shared';
 
-const READ_TIMEOUT_MS = 15000;
+const READ_TIMEOUT_MS = 45000;
 const WRITE_TIMEOUT_MS = 45000;
 
 interface PairSettingsRow {
