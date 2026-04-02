@@ -29,8 +29,8 @@ export function isHabitScheduledOn(task: Task, date: Date) {
 
 export function isTaskForDate(task: Task, date: Date) {
   if (isHabit(task)) return isHabitScheduledOn(task, date);
-  if (!task.dueDateTime) return false;
-  return isSameDay(new Date(task.dueDateTime), date);
+  const baseDate = task.dueDateTime ? new Date(task.dueDateTime) : new Date(task.createdAt);
+  return isSameDay(baseDate, date);
 }
 
 export function getTaskStatusForDate(task: Task, date: Date): TaskStatus {
