@@ -587,7 +587,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     syncTimerRef.current = window.setTimeout(async () => {
       try {
-        setSyncStatus('syncing');
         await withTimeout(replaceSharedSnapshot(currentPairId, snapshot), 'replaceSharedSnapshot');
         setSyncStatus('online');
         setSyncError(null);
@@ -614,7 +613,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       remoteRefreshTimerRef.current = window.setTimeout(async () => {
         try {
-          setSyncStatus('syncing');
           const remoteSnapshot = await withTimeout(loadSharedSnapshot(currentPairId), 'loadSharedSnapshot');
           applyRemoteSnapshot(remoteSnapshot);
           setSyncStatus('online');
