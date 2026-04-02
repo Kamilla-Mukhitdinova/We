@@ -292,6 +292,18 @@ async function loadSharedSnapshot(pairId: string): Promise<SharedAppSnapshot> {
   });
 }
 
+async function warmUpSharedSnapshot(pairId: string) {
+  if (!supabase) return;
+
+  const { error } = await supabase
+    .from('pair_settings')
+    .select('pair_id')
+    .eq('pair_id', pairId)
+    .maybeSingle();
+
+  if (error) throw error;
+}
+
 async function replaceSharedSnapshot(pairId: string, snapshot: SharedAppSnapshot) {
   if (!supabase) return;
 
@@ -444,9 +456,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       try {
         setSyncStatus('syncing');
         setCurrentPairId(SUPABASE_STATE_ROW_ID);
-        const remoteSnapshot = await retryWithBackoff(
-          () => withTimeout(loadSharedSnapshot(SUPABASE_STATE_ROW_ID), 'loadSharedSnapshot', READ_TIMEOUT_MS),
-          'loadSharedSnapshot'
+        await withTimeout(warmUpSharedSnapshot(SUPABASE_STATE_ROW_ID), 'warmUpSharedSnapshot', READ_TIMEOUT_MS);
+        const remoteSnapshot = await withTimeout(
+          loadSharedSnapshot(SUPABASE_STATE_ROW_ID),
+          'loadSharedSnapshot',
+          READ_TIMEOUT_MS
         );
         const hasRemoteContent =
           remoteSnapshot.tasks.length > 0 ||
@@ -501,9 +515,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       try {
         setSyncStatus('syncing');
         setCurrentPairId(SUPABASE_STATE_ROW_ID);
-        const remoteSnapshot = await retryWithBackoff(
-          () => withTimeout(loadSharedSnapshot(SUPABASE_STATE_ROW_ID), 'loadSharedSnapshot', READ_TIMEOUT_MS),
-          'loadSharedSnapshot'
+        await withTimeout(warmUpSharedSnapshot(SUPABASE_STATE_ROW_ID), 'warmUpSharedSnapshot', READ_TIMEOUT_MS);
+        const remoteSnapshot = await withTimeout(
+          loadSharedSnapshot(SUPABASE_STATE_ROW_ID),
+          'loadSharedSnapshot',
+          READ_TIMEOUT_MS
         );
         const hasRemoteContent =
           remoteSnapshot.tasks.length > 0 ||
