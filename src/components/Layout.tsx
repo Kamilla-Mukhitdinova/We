@@ -36,17 +36,21 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <h1 className="font-display text-lg font-bold text-foreground tracking-tight whitespace-nowrap">
               We Planner
             </h1>
-            <div
-              className="hidden md:inline-flex items-center rounded-full bg-secondary px-3 py-1 text-[11px] font-medium text-muted-foreground"
-              title={syncError ?? undefined}
-            >
-              {storageMode === 'shared'
-                ? syncStatus === 'online'
-                  ? 'Supabase подключен'
-                  : syncStatus === 'syncing'
-                    ? 'Supabase синхронизируется'
-                    : 'Supabase недоступен'
-                : 'Локальный режим'}
+            <div className="hidden md:flex flex-col gap-1">
+              <div className="inline-flex items-center rounded-full bg-secondary px-3 py-1 text-[11px] font-medium text-muted-foreground">
+                {storageMode === 'shared'
+                  ? syncStatus === 'online'
+                    ? 'Supabase подключен'
+                    : syncStatus === 'syncing'
+                      ? 'Supabase синхронизируется'
+                      : 'Supabase недоступен'
+                  : 'Локальный режим'}
+              </div>
+              {syncError && (
+                <p className="max-w-[24rem] text-[10px] leading-4 text-destructive">
+                  {syncError}
+                </p>
+              )}
             </div>
             <nav className="hidden sm:flex items-center gap-1">
               <NavTab to="/" label="Дэшборд" icon={<LayoutDashboard className="h-4 w-4" />} />
