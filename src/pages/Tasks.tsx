@@ -26,12 +26,16 @@ import { Task, TaskStatus } from '@/lib/types';
 import { getTaskStatusForDate, isHabit, isTaskForDate, toDateKey } from '@/lib/task-helpers';
 import { Calendar } from '@/components/ui/calendar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { StatusBadge } from '@/components/Badges';
+import { OwnerBadge, StatusBadge } from '@/components/Badges';
 import { CreateTaskDialog } from '@/components/CreateTaskDialog';
 import { EditTaskDialog } from '@/components/EditTaskDialog';
 import { ManageCategoriesDialog } from '@/components/ManageCategoriesDialog';
 
 type PlannerView = 'list' | 'kanban' | 'calendar';
+
+function getPartner(owner: Task['owner']): Task['owner'] {
+  return owner === 'Kamilla' ? 'Doszhan' : 'Kamilla';
+}
 
 function getLocalDate(task: Task) {
   return task.dueDateTime ? parseISO(task.dueDateTime) : undefined;
@@ -77,6 +81,7 @@ function getHabitStreak(task: Task, fromDate: Date) {
 export default function Tasks() {
   const { activeUser, tasks, updateTask, toggleTaskForDate, deleteTask, categories } = useApp();
   const [plannerView, setPlannerView] = useState<PlannerView>('list');
+  const [ownerFilter, setOwnerFilter] = useState<'mine' | 'partner' | 'all'>('mine');
   const [statusFilter, setStatusFilter] = useState<'all' | TaskStatus>('all');
   const [showCreate, setShowCreate] = useState(false);
   const [showCategories, setShowCategories] = useState(false);
@@ -87,49 +92,59 @@ export default function Tasks() {
   const todayDate = new Date();
   const todayKey = toDateKey(todayDate);
   const selectedDateKey = toDateKey(selectedDate);
+  const partner = getPartner(activeUser);
 
-  const myTasks = useMemo(() => {
+  const visibleTasks = useMemo(() => {
     return tasks
-      .filter((task) => task.owner === activeUser)
+      .filter((task) => {
+        if (ownerFilter === 'mine') return task.owner === activeUser;
+        if (ownerFilter === 'partner') return task.owner === partner;
+        return true;
+      })
       .filter((task) => (statusFilter === 'all' ? true : getTaskStatusForDate(task, todayDate) === statusFilter))
       .sort((a, b) => {
         const aDate = isHabit(a) ? 0 : a.dueDateTime ? new Date(a.dueDateTime).getTime() : 0;
         const bDate = isHabit(b) ? 0 : b.dueDateTime ? new Date(b.dueDateTime).getTime() : 0;
         return aDate - bDate || new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       });
-  }, [activeUser, statusFilter, tasks, todayDate]);
+  }, [activeUser, ownerFilter, partner, statusFilter, tasks, todayDate]);
 
   const todayTasks = useMemo(
-    () => myTasks.filter((task) => isTaskForDate(task, todayDate)),
-    [myTasks, todayDate]
+    () => visibleTasks.filter((task) => isTaskForDate(task, todayDate)),
+    [visibleTasks, todayDate]
   );
 
   const myHabits = useMemo(
     () =>
       tasks
-        .filter((task) => task.owner === activeUser && task.kind === 'habit')
+        .filter((task) => {
+          if (task.kind !== 'habit') return false;
+          if (ownerFilter === 'mine') return task.owner === activeUser;
+          if (ownerFilter === 'partner') return task.owner === partner;
+          return true;
+        })
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
-    [activeUser, tasks]
+    [activeUser, ownerFilter, partner, tasks]
   );
 
   const groupedByCategory = useMemo(() => {
     const map = new Map<string, Task[]>();
     categories.forEach((category) => {
-      const categoryTasks = myTasks.filter((task) => task.category === category);
+      const categoryTasks = visibleTasks.filter((task) => task.category === category);
       if (categoryTasks.length > 0) map.set(category, categoryTasks);
     });
-    myTasks
+    visibleTasks
       .filter((task) => !map.has(task.category))
       .forEach((task) => {
         const current = map.get(task.category) ?? [];
         map.set(task.category, [...current, task]);
       });
     return Array.from(map.entries());
-  }, [categories, myTasks]);
+  }, [categories, visibleTasks]);
 
   const tasksForSelectedDate = useMemo(() => {
-    return myTasks.filter((task) => isTaskForDate(task, selectedDate));
-  }, [myTasks, selectedDate]);
+    return visibleTasks.filter((task) => isTaskForDate(task, selectedDate));
+  }, [visibleTasks, selectedDate]);
 
   const tasksByCategoryOnSelectedDate = useMemo(() => {
     const map = new Map<string, Task[]>();
@@ -145,12 +160,12 @@ export default function Tasks() {
 
   const calendarHighlightedDates = useMemo(
     () =>
-      myTasks.flatMap((task) => {
+      visibleTasks.flatMap((task) => {
         if (isHabit(task)) return [];
         const taskDate = getLocalDate(task);
         return taskDate ? [taskDate] : [];
       }),
-    [myTasks]
+    [visibleTasks]
   );
 
   const kanbanColumns: { status: TaskStatus; title: string; hint: string }[] = [
@@ -182,9 +197,9 @@ export default function Tasks() {
       >
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h2 className="font-display text-3xl font-bold">Мои задачи</h2>
+            <h2 className="font-display text-3xl font-bold">Задачи</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Список, канбан и календарь работают как единая система. Можно планировать задачи и привычки, отмечать выполнение и видеть нагрузку по дням.
+              Список, канбан и календарь работают как единая система. Можно смотреть свои задачи, задачи партнёра или все сразу и видеть общий ритм.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -207,6 +222,23 @@ export default function Tasks() {
 
         <div className="mt-5 grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
           <div className="flex flex-wrap items-center gap-2">
+            {[
+              { value: 'mine', label: 'Мои' },
+              { value: 'partner', label: partner },
+              { value: 'all', label: 'Все' },
+            ].map((option) => (
+              <button
+                key={option.value}
+                onClick={() => setOwnerFilter(option.value as 'mine' | 'partner' | 'all')}
+                className={`rounded-full px-4 py-2 text-xs font-medium transition-colors ${
+                  ownerFilter === option.value
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-secondary text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
             {[
               { value: 'all', label: 'Все' },
               { value: 'todo', label: 'К выполнению' },
@@ -488,7 +520,7 @@ export default function Tasks() {
 
               {tasksForSelectedDate.length === 0 ? (
                 <div className="mt-5 rounded-[1.5rem] bg-secondary/50 px-4 py-10 text-center text-sm text-muted-foreground">
-                  На этот день задач пока нет.
+                  На этот день задач нет для выбранного режима просмотра.
                 </div>
               ) : (
                 <div className="mt-5 space-y-4">
@@ -530,7 +562,7 @@ export default function Tasks() {
             </div>
             <h3 className="mt-2 font-display text-2xl font-bold">Мои привычки</h3>
             <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-              Повторяющиеся дела собраны отдельно, чтобы их было проще отмечать и отслеживать.
+              Повторяющиеся дела собраны отдельно, чтобы их было проще отмечать и отслеживать в выбранном режиме просмотра.
             </p>
           </div>
           <button
@@ -543,7 +575,7 @@ export default function Tasks() {
 
         {myHabits.length === 0 ? (
           <div className="mt-4 rounded-[1.4rem] bg-secondary/35 px-5 py-8 text-center text-sm text-muted-foreground">
-            Пока нет привычек. Можно добавить, например, Коран, спорт, учёбу или чтение.
+            Пока нет привычек для выбранного режима. Можно добавить, например, Коран, спорт, учёбу или чтение.
           </div>
         ) : (
           <div className="mt-4 grid gap-3 xl:grid-cols-2">
@@ -776,6 +808,7 @@ function TaskCard({
           </div>
 
           <div className="mt-3 flex flex-wrap items-center gap-2">
+            <OwnerBadge owner={task.owner} />
             <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-medium ${meta.bg} ${meta.text}`}>
               <Icon className="h-3.5 w-3.5" />
               {translateCategory(task.category)}
