@@ -64,13 +64,6 @@ interface DailyWishRow {
   created_at: string;
 }
 
-interface ProfileRow {
-  id: string;
-  email: string;
-  owner: Owner;
-  pair_id: string;
-}
-
 interface AppState {
   activeUser: Owner;
   setActiveUser: (user: Owner) => void;
@@ -253,24 +246,6 @@ function mapDailyWishToDailyWishRow(pairId: string, wish: DailyWishMessage): Dai
     date: wish.date,
     created_at: wish.createdAt,
   };
-}
-
-async function fetchProfile(userId: string): Promise<ProfileRow> {
-  if (!supabase) {
-    throw new Error('Supabase is not configured');
-  }
-
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('id, email, owner, pair_id')
-    .eq('id', userId)
-    .maybeSingle<ProfileRow>();
-
-  if (error || !data) {
-    throw error ?? new Error('Profile not found');
-  }
-
-  return data;
 }
 
 async function loadSharedSnapshot(pairId: string): Promise<SharedAppSnapshot> {
@@ -465,14 +440,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       try {
         setSyncStatus('syncing');
-        const profile = await retryWithBackoff(
-          () => withTimeout(fetchProfile(data.session.user.id), 'fetchProfile', 15000),
-          'fetchProfile'
-        );
-        setActiveUser(profile.owner);
-        setCurrentPairId(profile.pair_id);
+        setCurrentPairId(SUPABASE_STATE_ROW_ID);
         const remoteSnapshot = await retryWithBackoff(
-          () => withTimeout(loadSharedSnapshot(profile.pair_id), 'loadSharedSnapshot', 15000),
+          () => withTimeout(loadSharedSnapshot(SUPABASE_STATE_ROW_ID), 'loadSharedSnapshot', 15000),
           'loadSharedSnapshot'
         );
         const hasRemoteContent =
@@ -482,7 +452,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
         if (!hasRemoteContent) {
           await retryWithBackoff(
-            () => withTimeout(replaceSharedSnapshot(profile.pair_id, initialSnapshot), 'replaceSharedSnapshot', 15000),
+            () => withTimeout(replaceSharedSnapshot(SUPABASE_STATE_ROW_ID, initialSnapshot), 'replaceSharedSnapshot', 15000),
             'replaceSharedSnapshot',
             2,
             2000
@@ -527,14 +497,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       try {
         setSyncStatus('syncing');
-        const profile = await retryWithBackoff(
-          () => withTimeout(fetchProfile(session.user.id), 'fetchProfile', 15000),
-          'fetchProfile'
-        );
-        setActiveUser(profile.owner);
-        setCurrentPairId(profile.pair_id);
+        setCurrentPairId(SUPABASE_STATE_ROW_ID);
         const remoteSnapshot = await retryWithBackoff(
-          () => withTimeout(loadSharedSnapshot(profile.pair_id), 'loadSharedSnapshot', 15000),
+          () => withTimeout(loadSharedSnapshot(SUPABASE_STATE_ROW_ID), 'loadSharedSnapshot', 15000),
           'loadSharedSnapshot'
         );
         const hasRemoteContent =
@@ -544,7 +509,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
         if (!hasRemoteContent) {
           await retryWithBackoff(
-            () => withTimeout(replaceSharedSnapshot(profile.pair_id, initialSnapshot), 'replaceSharedSnapshot', 15000),
+            () => withTimeout(replaceSharedSnapshot(SUPABASE_STATE_ROW_ID, initialSnapshot), 'replaceSharedSnapshot', 15000),
             'replaceSharedSnapshot',
             2,
             2000
