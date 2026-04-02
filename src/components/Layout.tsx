@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  const { activeUser, logout, fontScale, setFontScale, storageMode, syncStatus } = useApp();
+  const { activeUser, logout, fontScale, setFontScale, storageMode, syncStatus, syncError } = useApp();
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const [showCreateTask, setShowCreateTask] = useState(false);
@@ -36,7 +36,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <h1 className="font-display text-lg font-bold text-foreground tracking-tight whitespace-nowrap">
               We Planner
             </h1>
-            <div className="hidden md:inline-flex items-center rounded-full bg-secondary px-3 py-1 text-[11px] font-medium text-muted-foreground">
+            <div
+              className="hidden md:inline-flex items-center rounded-full bg-secondary px-3 py-1 text-[11px] font-medium text-muted-foreground"
+              title={syncError ?? undefined}
+            >
               {storageMode === 'shared'
                 ? syncStatus === 'online'
                   ? 'Supabase подключен'

@@ -125,6 +125,19 @@ function getEmptySnapshot() {
   return normalizeSharedSnapshot({});
 }
 
+function getErrorMessage(error: unknown, fallback: string) {
+  if (error && typeof error === 'object') {
+    const message = 'message' in error ? error.message : null;
+    const details = 'details' in error ? error.details : null;
+    const hint = 'hint' in error ? error.hint : null;
+    const parts = [message, details, hint].filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
+    if (parts.length > 0) return parts.join(' | ');
+  }
+
+  if (error instanceof Error && error.message.trim()) return error.message;
+  return fallback;
+}
+
 function mapTaskRowToTask({ pair_id: _pairId, repeat_days, completion_dates, due_date_time, created_at, completed_at, ...task }: TaskRow): Task {
   return {
     ...task,
@@ -428,11 +441,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         hasHydratedSharedRef.current = true;
         setSyncStatus('online');
         setSyncError(null);
-      } catch {
+      } catch (error) {
         setCurrentPairId(SUPABASE_STATE_ROW_ID);
         hasHydratedSharedRef.current = false;
         setSyncStatus('error');
-        setSyncError('Вход выполнен, но не удалось загрузить данные пары из Supabase. Пока используем локальные данные.');
+        setSyncError(getErrorMessage(error, 'Вход выполнен, но не удалось загрузить данные пары из Supabase. Пока используем локальные данные.'));
       } finally {
         setIsBootstrapping(false);
       }
@@ -479,11 +492,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         hasHydratedSharedRef.current = true;
         setSyncStatus('online');
         setSyncError(null);
-      } catch {
+      } catch (error) {
         setCurrentPairId(SUPABASE_STATE_ROW_ID);
         hasHydratedSharedRef.current = false;
         setSyncStatus('error');
-        setSyncError('Вход выполнен, но данные пары не загрузились из Supabase. Пока используем локальный режим.');
+        setSyncError(getErrorMessage(error, 'Вход выполнен, но данные пары не загрузились из Supabase. Пока используем локальный режим.'));
       } finally {
         setIsBootstrapping(false);
       }
@@ -513,9 +526,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         await replaceSharedSnapshot(currentPairId, snapshot);
         setSyncStatus('online');
         setSyncError(null);
-      } catch {
+      } catch (error) {
         setSyncStatus('error');
-        setSyncError('Не удалось синхронизировать данные пары');
+        setSyncError(getErrorMessage(error, 'Не удалось синхронизировать данные пары'));
       }
     }, 500);
 
@@ -541,9 +554,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           applyRemoteSnapshot(remoteSnapshot);
           setSyncStatus('online');
           setSyncError(null);
-        } catch {
+        } catch (error) {
           setSyncStatus('error');
-          setSyncError('Не удалось получить свежие данные пары');
+          setSyncError(getErrorMessage(error, 'Не удалось получить свежие данные пары'));
         }
       }, 250);
     };
