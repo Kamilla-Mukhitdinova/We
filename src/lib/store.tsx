@@ -372,6 +372,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const remoteRefreshTimerRef = useRef<number | null>(null);
   const hasHydratedSharedRef = useRef(!isSupabaseConfigured);
   const skipNextSharedSyncRef = useRef(false);
+  const localChangeVersionRef = useRef(0);
   const storageMode: StorageMode = isSupabaseConfigured ? 'shared' : 'local';
 
   const snapshot = useMemo(
@@ -407,6 +408,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const hydrateSharedInBackground = useCallback(async (pairId: string) => {
     if (!supabase) return;
+    const startedAtVersion = localChangeVersionRef.current;
 
     try {
       const remoteSnapshot = await withTimeout(loadSharedSnapshot(pairId), 'loadSharedSnapshot', READ_TIMEOUT_MS);
@@ -417,8 +419,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       if (!hasRemoteContent) {
         await withTimeout(replaceSharedSnapshot(pairId, snapshot), 'replaceSharedSnapshot', WRITE_TIMEOUT_MS);
-        applyRemoteSnapshot(snapshot);
-      } else {
+        if (localChangeVersionRef.current === startedAtVersion) {
+          applyRemoteSnapshot(snapshot);
+        }
+      } else if (localChangeVersionRef.current === startedAtVersion) {
         applyRemoteSnapshot(remoteSnapshot);
       }
 
@@ -431,6 +435,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setSyncError(getErrorMessage(error, 'Не удалось обновить данные пары, пока используем сохранённые данные.'));
     }
   }, [applyRemoteSnapshot, snapshot]);
+
+  const markLocalChange = useCallback(() => {
+    localChangeVersionRef.current += 1;
+  }, []);
 
   useEffect(() => {
     localStorage.setItem(LOCAL_KEYS.activeUser, JSON.stringify(activeUser));
@@ -688,10 +696,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   );
 
   const addTask = useCallback((task: Omit<Task, 'id' | 'createdAt'>) => {
+    markLocalChange();
     setTasks((prev) => [...prev, { ...task, id: crypto.randomUUID(), createdAt: new Date().toISOString() }]);
-  }, []);
+  }, [markLocalChange]);
 
   const updateTask = useCallback((id: string, updates: Partial<Task>) => {
+    markLocalChange();
     setTasks((prev) =>
       prev.map((task) => {
         if (task.id !== id) return task;
@@ -705,9 +715,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return updated;
       })
     );
-  }, []);
+  }, [markLocalChange]);
 
   const toggleTaskForDate = useCallback((id: string, date: string) => {
+    markLocalChange();
     setTasks((prev) =>
       prev.map((task) => {
         if (task.id !== id) return task;
@@ -728,17 +739,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         };
       })
     );
-  }, []);
+  }, [markLocalChange]);
 
   const deleteTask = useCallback((id: string) => {
+    markLocalChange();
     setTasks((prev) => prev.filter((task) => task.id !== id));
-  }, []);
+  }, [markLocalChange]);
 
   const addWish = useCallback((wish: Omit<Wish, 'id' | 'createdAt'>) => {
+    markLocalChange();
     setWishes((prev) => [...prev, { ...wish, id: crypto.randomUUID(), createdAt: new Date().toISOString() }]);
-  }, []);
+  }, [markLocalChange]);
 
   const updateWish = useCallback((id: string, updates: Partial<Wish>) => {
+    markLocalChange();
     setWishes((prev) =>
       prev.map((wish) => {
         if (wish.id !== id) return wish;
@@ -752,39 +766,47 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return updated;
       })
     );
-  }, []);
+  }, [markLocalChange]);
 
   const deleteWish = useCallback((id: string) => {
+    markLocalChange();
     setWishes((prev) => prev.filter((wish) => wish.id !== id));
-  }, []);
+  }, [markLocalChange]);
 
   const addCategory = useCallback((category: string) => {
+    markLocalChange();
     setCategories((prev) => (prev.includes(category) ? prev : [...prev, category]));
-  }, []);
+  }, [markLocalChange]);
 
   const addWishCategory = useCallback((category: string) => {
+    markLocalChange();
     setWishCategories((prev) => (prev.includes(category) ? prev : [...prev, category]));
-  }, []);
+  }, [markLocalChange]);
 
   const deleteCategory = useCallback((category: string) => {
+    markLocalChange();
     setCategories((prev) => prev.filter((item) => item !== category));
-  }, []);
+  }, [markLocalChange]);
 
   const deleteWishCategory = useCallback((category: string) => {
+    markLocalChange();
     setWishCategories((prev) => prev.filter((item) => item !== category));
-  }, []);
+  }, [markLocalChange]);
 
   const addDailyWish = useCallback((wish: Omit<DailyWishMessage, 'id' | 'createdAt'>) => {
+    markLocalChange();
     setDailyWishes((prev) => [...prev, { ...wish, id: crypto.randomUUID(), createdAt: new Date().toISOString() }]);
-  }, []);
+  }, [markLocalChange]);
 
   const addCustomHadith = useCallback((hadith: string) => {
+    markLocalChange();
     setCustomHadiths((prev) => (prev.includes(hadith) ? prev : [...prev, hadith]));
-  }, []);
+  }, [markLocalChange]);
 
   const deleteCustomHadith = useCallback((hadith: string) => {
+    markLocalChange();
     setCustomHadiths((prev) => prev.filter((item) => item !== hadith));
-  }, []);
+  }, [markLocalChange]);
 
   return (
     <AppContext.Provider
