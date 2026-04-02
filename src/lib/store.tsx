@@ -231,7 +231,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [syncError, setSyncError] = useState<string | null>(null);
   const [currentPairId, setCurrentPairId] = useState<string | null>(isSupabaseConfigured ? null : SUPABASE_STATE_ROW_ID);
   const syncTimerRef = useRef<number | null>(null);
+  const remoteRefreshTimerRef = useRef<number | null>(null);
   const hasHydratedSharedRef = useRef(!isSupabaseConfigured);
+  const skipNextSharedSyncRef = useRef(false);
   const storageMode: StorageMode = isSupabaseConfigured ? 'shared' : 'local';
 
   const snapshot = useMemo(
@@ -256,6 +258,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setDailyWishes(nextSnapshot.dailyWishes);
     setCustomHadiths(nextSnapshot.customHadiths);
   }, []);
+
+  const applyRemoteSnapshot = useCallback(
+    (nextSnapshot: SharedAppSnapshot) => {
+      skipNextSharedSyncRef.current = true;
+      applySnapshot(nextSnapshot);
+    },
+    [applySnapshot]
+  );
 
   useEffect(() => {
     localStorage.setItem(LOCAL_KEYS.activeUser, JSON.stringify(activeUser));
@@ -318,9 +328,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
         if (!hasRemoteContent) {
           await replaceSharedSnapshot(profile.pair_id, initialSnapshot);
-          applySnapshot(initialSnapshot);
+          applyRemoteSnapshot(initialSnapshot);
         } else {
-          applySnapshot(remoteSnapshot);
+          applyRemoteSnapshot(remoteSnapshot);
         }
 
         hasHydratedSharedRef.current = true;
@@ -369,9 +379,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
         if (!hasRemoteContent) {
           await replaceSharedSnapshot(profile.pair_id, initialSnapshot);
-          applySnapshot(initialSnapshot);
+          applyRemoteSnapshot(initialSnapshot);
         } else {
-          applySnapshot(remoteSnapshot);
+          applyRemoteSnapshot(remoteSnapshot);
         }
 
         hasHydratedSharedRef.current = true;
@@ -391,10 +401,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [applySnapshot]);
+  }, [applyRemoteSnapshot]);
 
   useEffect(() => {
     if (!supabase || !isAuthenticated || !currentPairId || !hasHydratedSharedRef.current) return;
+
+    if (skipNextSharedSyncRef.current) {
+      skipNextSharedSyncRef.current = false;
+      return;
+    }
 
     if (syncTimerRef.current) {
       window.clearTimeout(syncTimerRef.current);
@@ -418,6 +433,60 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
     };
   }, [currentPairId, isAuthenticated, snapshot]);
+
+  useEffect(() => {
+    if (!supabase || !isAuthenticated || !currentPairId || !hasHydratedSharedRef.current) return;
+
+    const scheduleRemoteRefresh = () => {
+      if (remoteRefreshTimerRef.current) {
+        window.clearTimeout(remoteRefreshTimerRef.current);
+      }
+
+      remoteRefreshTimerRef.current = window.setTimeout(async () => {
+        try {
+          setSyncStatus('syncing');
+          const remoteSnapshot = await loadSharedSnapshot(currentPairId);
+          applyRemoteSnapshot(remoteSnapshot);
+          setSyncStatus('online');
+          setSyncError(null);
+        } catch {
+          setSyncStatus('error');
+          setSyncError('Не удалось получить свежие данные пары');
+        }
+      }, 250);
+    };
+
+    const channel = supabase
+      .channel(`pair-sync:${currentPairId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'pair_settings', filter: `pair_id=eq.${currentPairId}` },
+        scheduleRemoteRefresh
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'tasks', filter: `pair_id=eq.${currentPairId}` },
+        scheduleRemoteRefresh
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'wishes', filter: `pair_id=eq.${currentPairId}` },
+        scheduleRemoteRefresh
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'daily_wishes', filter: `pair_id=eq.${currentPairId}` },
+        scheduleRemoteRefresh
+      )
+      .subscribe();
+
+    return () => {
+      if (remoteRefreshTimerRef.current) {
+        window.clearTimeout(remoteRefreshTimerRef.current);
+      }
+      supabase.removeChannel(channel);
+    };
+  }, [applyRemoteSnapshot, currentPairId, isAuthenticated]);
 
   const login = useCallback(
     async (user: Owner, password: string) => {
