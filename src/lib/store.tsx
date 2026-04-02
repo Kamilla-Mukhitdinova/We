@@ -163,8 +163,8 @@ function sleep(ms: number) {
 async function retryWithBackoff<T>(
   task: () => Promise<T>,
   label: string,
-  attempts = 3,
-  baseDelayMs = 2500
+  attempts = 2,
+  baseDelayMs = 2000
 ): Promise<T> {
   let lastError: unknown;
 
@@ -466,13 +466,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       try {
         setSyncStatus('syncing');
         const profile = await retryWithBackoff(
-          () => withTimeout(fetchProfile(data.session.user.id), 'fetchProfile', 30000),
+          () => withTimeout(fetchProfile(data.session.user.id), 'fetchProfile', 15000),
           'fetchProfile'
         );
         setActiveUser(profile.owner);
         setCurrentPairId(profile.pair_id);
         const remoteSnapshot = await retryWithBackoff(
-          () => withTimeout(loadSharedSnapshot(profile.pair_id), 'loadSharedSnapshot', 30000),
+          () => withTimeout(loadSharedSnapshot(profile.pair_id), 'loadSharedSnapshot', 15000),
           'loadSharedSnapshot'
         );
         const hasRemoteContent =
@@ -482,10 +482,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
         if (!hasRemoteContent) {
           await retryWithBackoff(
-            () => withTimeout(replaceSharedSnapshot(profile.pair_id, initialSnapshot), 'replaceSharedSnapshot', 30000),
+            () => withTimeout(replaceSharedSnapshot(profile.pair_id, initialSnapshot), 'replaceSharedSnapshot', 15000),
             'replaceSharedSnapshot',
             2,
-            3000
+            2000
           );
           applyRemoteSnapshot(initialSnapshot);
         } else {
@@ -528,13 +528,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       try {
         setSyncStatus('syncing');
         const profile = await retryWithBackoff(
-          () => withTimeout(fetchProfile(session.user.id), 'fetchProfile', 30000),
+          () => withTimeout(fetchProfile(session.user.id), 'fetchProfile', 15000),
           'fetchProfile'
         );
         setActiveUser(profile.owner);
         setCurrentPairId(profile.pair_id);
         const remoteSnapshot = await retryWithBackoff(
-          () => withTimeout(loadSharedSnapshot(profile.pair_id), 'loadSharedSnapshot', 30000),
+          () => withTimeout(loadSharedSnapshot(profile.pair_id), 'loadSharedSnapshot', 15000),
           'loadSharedSnapshot'
         );
         const hasRemoteContent =
@@ -544,10 +544,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
         if (!hasRemoteContent) {
           await retryWithBackoff(
-            () => withTimeout(replaceSharedSnapshot(profile.pair_id, initialSnapshot), 'replaceSharedSnapshot', 30000),
+            () => withTimeout(replaceSharedSnapshot(profile.pair_id, initialSnapshot), 'replaceSharedSnapshot', 15000),
             'replaceSharedSnapshot',
             2,
-            3000
+            2000
           );
           applyRemoteSnapshot(initialSnapshot);
         } else {
