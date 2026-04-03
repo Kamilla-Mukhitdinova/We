@@ -20,6 +20,7 @@ type StorageMode = 'local' | 'shared';
 
 const READ_TIMEOUT_MS = 45000;
 const WRITE_TIMEOUT_MS = 45000;
+const REMOTE_REFRESH_INTERVAL_MS = 30000;
 
 interface PairSettingsRow {
   pair_id: string;
@@ -561,10 +562,37 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setSyncError(null);
     } catch (error) {
       hasHydratedSharedRef.current = true;
-      setSyncStatus('online');
+      setSyncStatus('error');
       setSyncError(getErrorMessage(error, 'Не удалось обновить данные пары, пока используем сохранённые данные.'));
     }
   }, [applyRemoteSnapshot, snapshot]);
+
+  const refreshSharedSnapshot = useCallback(
+    async (pairId: string) => {
+      if (!supabase || !hasHydratedSharedRef.current) return;
+
+      const scheduledAtVersion = localChangeVersionRef.current;
+      const hasPendingLocalChanges = localChangeVersionRef.current !== lastSharedSyncVersionRef.current;
+      if (hasPendingLocalChanges) return;
+
+      try {
+        const remoteSnapshot = await withTimeout(loadSharedSnapshot(pairId), 'loadSharedSnapshot', READ_TIMEOUT_MS);
+        const localChangedSinceRefreshStarted = localChangeVersionRef.current !== scheduledAtVersion;
+        const stillHasPendingLocalChanges = localChangeVersionRef.current !== lastSharedSyncVersionRef.current;
+        if (localChangedSinceRefreshStarted || stillHasPendingLocalChanges) {
+          return;
+        }
+
+        applyRemoteSnapshot(remoteSnapshot);
+        setSyncStatus('online');
+        setSyncError(null);
+      } catch (error) {
+        setSyncStatus('error');
+        setSyncError(getErrorMessage(error, 'Не удалось получить свежие данные пары'));
+      }
+    },
+    [applyRemoteSnapshot]
+  );
 
   const markLocalChange = useCallback(() => {
     localChangeVersionRef.current += 1;
@@ -702,56 +730,35 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         window.clearTimeout(remoteRefreshTimerRef.current);
       }
 
-      const scheduledAtVersion = localChangeVersionRef.current;
-      remoteRefreshTimerRef.current = window.setTimeout(async () => {
-        try {
-          const remoteSnapshot = await withTimeout(loadSharedSnapshot(currentPairId), 'loadSharedSnapshot', READ_TIMEOUT_MS);
-          const hasPendingLocalChanges = localChangeVersionRef.current !== lastSharedSyncVersionRef.current;
-          const localChangedSinceSchedule = localChangeVersionRef.current !== scheduledAtVersion;
-          if (hasPendingLocalChanges || localChangedSinceSchedule) {
-            return;
-          }
-          applyRemoteSnapshot(remoteSnapshot);
-          setSyncStatus('online');
-          setSyncError(null);
-        } catch (error) {
-          setSyncStatus('error');
-          setSyncError(getErrorMessage(error, 'Не удалось получить свежие данные пары'));
-        }
+      remoteRefreshTimerRef.current = window.setTimeout(() => {
+        void refreshSharedSnapshot(currentPairId);
       }, 250);
     };
 
-    const channel = supabase
-      .channel(`pair-sync:${currentPairId}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'pair_settings', filter: `pair_id=eq.${currentPairId}` },
-        scheduleRemoteRefresh
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'tasks', filter: `pair_id=eq.${currentPairId}` },
-        scheduleRemoteRefresh
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'wishes', filter: `pair_id=eq.${currentPairId}` },
-        scheduleRemoteRefresh
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'daily_wishes', filter: `pair_id=eq.${currentPairId}` },
-        scheduleRemoteRefresh
-      )
-      .subscribe();
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        scheduleRemoteRefresh();
+      }
+    };
+
+    const pollIntervalId = window.setInterval(() => {
+      scheduleRemoteRefresh();
+    }, REMOTE_REFRESH_INTERVAL_MS);
+
+    window.addEventListener('focus', scheduleRemoteRefresh);
+    window.addEventListener('online', scheduleRemoteRefresh);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
+      window.clearInterval(pollIntervalId);
       if (remoteRefreshTimerRef.current) {
         window.clearTimeout(remoteRefreshTimerRef.current);
       }
-      supabase.removeChannel(channel);
+      window.removeEventListener('focus', scheduleRemoteRefresh);
+      window.removeEventListener('online', scheduleRemoteRefresh);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [applyRemoteSnapshot, currentPairId, isAuthenticated]);
+  }, [currentPairId, isAuthenticated, refreshSharedSnapshot]);
 
   const login = useCallback(
     async (user: Owner, password: string) => {
