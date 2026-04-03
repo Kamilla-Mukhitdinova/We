@@ -75,6 +75,14 @@ interface SharedSnapshotPayload {
   updatedAt: string | null;
 }
 
+interface SharedSettingsSnapshot {
+  wishes: Wish[];
+  categories: string[];
+  wishCategories: string[];
+  dailyWishes: DailyWishMessage[];
+  customHadiths: string[];
+}
+
 interface AppState {
   activeUser: Owner;
   setActiveUser: (user: Owner) => void;
@@ -378,6 +386,62 @@ async function replaceSharedSnapshot(pairId: string, snapshot: SharedAppSnapshot
   if (finalizeSettingsError) throw finalizeSettingsError;
 }
 
+async function replaceSharedSettingsSnapshot(pairId: string, snapshot: SharedSettingsSnapshot) {
+  if (!supabase) return;
+
+  const settingsPayload: PairSettingsRow = {
+    pair_id: pairId,
+    categories: snapshot.categories,
+    wish_categories: snapshot.wishCategories,
+    custom_hadiths: snapshot.customHadiths,
+  };
+
+  const wishesPayload: WishRow[] = snapshot.wishes.map((wish) => mapWishToWishRow(pairId, wish));
+  const dailyWishesPayload: DailyWishRow[] = snapshot.dailyWishes.map((wish) =>
+    mapDailyWishToDailyWishRow(pairId, wish)
+  );
+
+  const { error: settingsError } = await supabase.from('pair_settings').upsert(settingsPayload);
+  if (settingsError) throw settingsError;
+
+  const { error: clearWishesError } = await supabase.from('wishes').delete().eq('pair_id', pairId);
+  if (clearWishesError) throw clearWishesError;
+  if (wishesPayload.length > 0) {
+    const { error: wishesError } = await supabase.from('wishes').insert(wishesPayload);
+    if (wishesError) throw wishesError;
+  }
+
+  const { error: clearDailyWishesError } = await supabase
+    .from('daily_wishes')
+    .delete()
+    .eq('pair_id', pairId);
+  if (clearDailyWishesError) throw clearDailyWishesError;
+  if (dailyWishesPayload.length > 0) {
+    const { error: dailyWishesError } = await supabase.from('daily_wishes').insert(dailyWishesPayload);
+    if (dailyWishesError) throw dailyWishesError;
+  }
+
+  const { error: finalizeSettingsError } = await supabase
+    .from('pair_settings')
+    .update({ updated_at: new Date().toISOString() })
+    .eq('pair_id', pairId);
+  if (finalizeSettingsError) throw finalizeSettingsError;
+}
+
+async function syncTaskRow(pairId: string, task: Task) {
+  if (!supabase) return;
+
+  const { error } = await supabase.from('tasks').upsert(mapTaskToTaskRow(pairId, task));
+  if (error) throw error;
+}
+
+async function removeTaskRow(pairId: string, taskId: string) {
+  if (!supabase) return;
+
+  const { error } = await supabase.from('tasks').delete().eq('pair_id', pairId).eq('id', taskId);
+  if (error) throw error;
+}
+
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [activeUser, setActiveUser] = useState<Owner>(() => loadFromStorage<Owner>(LOCAL_KEYS.activeUser, 'Kamilla'));
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() =>
@@ -417,6 +481,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         passwords,
       }),
     [tasks, wishes, categories, wishCategories, dailyWishes, customHadiths, passwords]
+  );
+
+  const sharedSettingsSnapshot = useMemo<SharedSettingsSnapshot>(
+    () => ({
+      wishes,
+      categories,
+      wishCategories,
+      dailyWishes,
+      customHadiths,
+    }),
+    [wishes, categories, wishCategories, dailyWishes, customHadiths]
   );
 
   const applySnapshot = useCallback((nextSnapshot: SharedAppSnapshot) => {
@@ -588,7 +663,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     syncTimerRef.current = window.setTimeout(async () => {
       try {
-        await withTimeout(replaceSharedSnapshot(currentPairId, snapshot), 'replaceSharedSnapshot', WRITE_TIMEOUT_MS);
+        await withTimeout(
+          replaceSharedSettingsSnapshot(currentPairId, sharedSettingsSnapshot),
+          'replaceSharedSettingsSnapshot',
+          WRITE_TIMEOUT_MS
+        );
         lastSharedSyncVersionRef.current = localChangeVersionRef.current;
         setSyncStatus('online');
         setSyncError(null);
@@ -603,7 +682,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         window.clearTimeout(syncTimerRef.current);
       }
     };
-  }, [currentPairId, isAuthenticated, snapshot]);
+  }, [currentPairId, isAuthenticated, sharedSettingsSnapshot]);
 
   useEffect(() => {
     if (!supabase || !isAuthenticated || !currentPairId || !hasHydratedSharedRef.current) return;
@@ -749,11 +828,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   );
 
   const addTask = useCallback((task: Omit<Task, 'id' | 'createdAt'>) => {
+    const nextTask: Task = { ...task, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
     markLocalChange();
-    setTasks((prev) => [...prev, { ...task, id: crypto.randomUUID(), createdAt: new Date().toISOString() }]);
-  }, [markLocalChange]);
+    setTasks((prev) => [...prev, nextTask]);
+
+    if (supabase && currentPairId) {
+      void withTimeout(syncTaskRow(currentPairId, nextTask), 'syncTaskRow', WRITE_TIMEOUT_MS)
+        .then(() => {
+          setSyncStatus('online');
+          setSyncError(null);
+        })
+        .catch((error) => {
+          setSyncStatus('error');
+          setSyncError(getErrorMessage(error, 'Не удалось сохранить задачу'));
+        });
+    }
+  }, [currentPairId, markLocalChange]);
 
   const updateTask = useCallback((id: string, updates: Partial<Task>) => {
+    let syncedTask: Task | null = null;
     markLocalChange();
     setTasks((prev) =>
       prev.map((task) => {
@@ -765,39 +858,85 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (updates.status && updates.status !== 'done') {
           updated.completedAt = undefined;
         }
+        syncedTask = updated;
         return updated;
       })
     );
-  }, [markLocalChange]);
+
+    if (supabase && currentPairId) {
+      queueMicrotask(() => {
+        if (!syncedTask) return;
+        void withTimeout(syncTaskRow(currentPairId, syncedTask as Task), 'syncTaskRow', WRITE_TIMEOUT_MS)
+          .then(() => {
+            setSyncStatus('online');
+            setSyncError(null);
+          })
+          .catch((error) => {
+            setSyncStatus('error');
+            setSyncError(getErrorMessage(error, 'Не удалось обновить задачу'));
+          });
+      });
+    }
+  }, [currentPairId, markLocalChange]);
 
   const toggleTaskForDate = useCallback((id: string, date: string) => {
+    let syncedTask: Task | null = null;
     markLocalChange();
     setTasks((prev) =>
       prev.map((task) => {
         if (task.id !== id) return task;
         if (task.kind !== 'habit') {
           const nextStatus = task.status === 'done' ? 'todo' : 'done';
-          return {
+          syncedTask = {
             ...task,
             status: nextStatus,
             completedAt: nextStatus === 'done' ? new Date().toISOString() : undefined,
           };
+          return syncedTask;
         }
 
         const completionDates = task.completionDates ?? [];
         const exists = completionDates.includes(date);
-        return {
+        syncedTask = {
           ...task,
           completionDates: exists ? completionDates.filter((item) => item !== date) : [...completionDates, date],
         };
+        return syncedTask;
       })
     );
-  }, [markLocalChange]);
+
+    if (supabase && currentPairId) {
+      queueMicrotask(() => {
+        if (!syncedTask) return;
+        void withTimeout(syncTaskRow(currentPairId, syncedTask as Task), 'syncTaskRow', WRITE_TIMEOUT_MS)
+          .then(() => {
+            setSyncStatus('online');
+            setSyncError(null);
+          })
+          .catch((error) => {
+            setSyncStatus('error');
+            setSyncError(getErrorMessage(error, 'Не удалось обновить задачу'));
+          });
+      });
+    }
+  }, [currentPairId, markLocalChange]);
 
   const deleteTask = useCallback((id: string) => {
     markLocalChange();
     setTasks((prev) => prev.filter((task) => task.id !== id));
-  }, [markLocalChange]);
+
+    if (supabase && currentPairId) {
+      void withTimeout(removeTaskRow(currentPairId, id), 'removeTaskRow', WRITE_TIMEOUT_MS)
+        .then(() => {
+          setSyncStatus('online');
+          setSyncError(null);
+        })
+        .catch((error) => {
+          setSyncStatus('error');
+          setSyncError(getErrorMessage(error, 'Не удалось удалить задачу'));
+        });
+    }
+  }, [currentPairId, markLocalChange]);
 
   const addWish = useCallback((wish: Omit<Wish, 'id' | 'createdAt'>) => {
     markLocalChange();
