@@ -33,6 +33,7 @@
 Создайте файл `.env.local` в корне проекта:
 
 ```env
+VITE_STORAGE_MODE=shared
 VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key
 VITE_SUPABASE_APP_STATE_ID=your-private-random-id

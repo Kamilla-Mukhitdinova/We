@@ -12,6 +12,11 @@ export interface SharedAppSnapshot {
   passwords: PasswordMap;
 }
 
+interface SnapshotBackupEnvelope {
+  snapshot: SharedAppSnapshot;
+  savedAt: string;
+}
+
 export const LOCAL_KEYS = {
   tasks: 'twp-tasks',
   wishes: 'twp-wishes',
@@ -23,6 +28,8 @@ export const LOCAL_KEYS = {
   isAuthenticated: 'twp-is-authenticated',
   passwords: 'twp-passwords',
   fontScale: 'twp-font-scale',
+  snapshotBackup: 'twp-snapshot-backup',
+  lastMutationAt: 'twp-last-mutation-at',
 } as const;
 
 export const DEFAULT_PASSWORDS: PasswordMap = {
@@ -81,6 +88,59 @@ export function normalizeSharedSnapshot(snapshot?: Partial<SharedAppSnapshot> | 
   };
 }
 
+function hasMeaningfulSnapshotContent(snapshot: SharedAppSnapshot) {
+  return (
+    snapshot.tasks.length > 0 ||
+    snapshot.wishes.length > 0 ||
+    snapshot.dailyWishes.length > 0 ||
+    snapshot.customHadiths.length > 0
+  );
+}
+
+function normalizeBackupEnvelope(
+  rawBackup: Partial<SharedAppSnapshot> | SnapshotBackupEnvelope | null
+): SnapshotBackupEnvelope | null {
+  if (!rawBackup) return null;
+
+  if ('snapshot' in rawBackup) {
+    return {
+      snapshot: normalizeSharedSnapshot(rawBackup.snapshot),
+      savedAt:
+        typeof rawBackup.savedAt === 'string' && rawBackup.savedAt.trim().length > 0
+          ? rawBackup.savedAt
+          : new Date(0).toISOString(),
+    };
+  }
+
+  return {
+    snapshot: normalizeSharedSnapshot(rawBackup),
+    savedAt: new Date(0).toISOString(),
+  };
+}
+
+export function loadLocalBackup() {
+  const backup = normalizeBackupEnvelope(
+    loadFromStorage<Partial<SharedAppSnapshot> | SnapshotBackupEnvelope | null>(LOCAL_KEYS.snapshotBackup, null)
+  );
+
+  if (!backup) {
+    return null;
+  }
+
+  return {
+    ...backup,
+    hasContent: hasMeaningfulSnapshotContent(backup.snapshot),
+  };
+}
+
+export function loadLastLocalMutationAt() {
+  return loadFromStorage<string | null>(LOCAL_KEYS.lastMutationAt, null);
+}
+
+export function markLocalMutationAt(timestamp = new Date().toISOString()) {
+  localStorage.setItem(LOCAL_KEYS.lastMutationAt, JSON.stringify(timestamp));
+}
+
 export function loadLocalSnapshot(): SharedAppSnapshot {
   return normalizeSharedSnapshot({
     tasks: loadFromStorage<Task[]>(LOCAL_KEYS.tasks, []),
@@ -101,4 +161,12 @@ export function saveLocalSnapshot(snapshot: SharedAppSnapshot) {
   localStorage.setItem(LOCAL_KEYS.dailyWishes, JSON.stringify(snapshot.dailyWishes));
   localStorage.setItem(LOCAL_KEYS.customHadiths, JSON.stringify(snapshot.customHadiths));
   localStorage.setItem(LOCAL_KEYS.passwords, JSON.stringify(snapshot.passwords));
+
+  if (hasMeaningfulSnapshotContent(snapshot)) {
+    const backupPayload: SnapshotBackupEnvelope = {
+      snapshot,
+      savedAt: new Date().toISOString(),
+    };
+    localStorage.setItem(LOCAL_KEYS.snapshotBackup, JSON.stringify(backupPayload));
+  }
 }

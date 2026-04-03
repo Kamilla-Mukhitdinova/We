@@ -14,6 +14,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isBootstrapping, storageMode, syncStatus, syncError, login } = useApp();
   const [selectedOwner, setSelectedOwner] = useState<Owner>('Kamilla');
   const [password, setPassword] = useState('');
+  const showSupabaseChecklist = storageMode === 'shared' && Boolean(syncError);
 
   const helperText = useMemo(
     () => OWNER_OPTIONS.find((option) => option.value === selectedOwner)?.hint ?? '',
@@ -155,6 +156,14 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
                 Войдите под своим именем и личным паролем. После входа пароль можно поменять в профиле.
                 {syncError ? ` ${syncError}.` : ''}
               </div>
+
+              {showSupabaseChecklist ? (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50/90 p-4 text-xs leading-5 text-amber-900">
+                  Проверьте в Supabase 3 вещи: выполнен SQL из `supabase/schema.sql`, созданы 2 пользователя в
+                  `Authentication`, и в таблице `public.profiles` есть две строки с одинаковым `pair_id` для Kamilla
+                  и Doszhan.
+                </div>
+              ) : null}
             </form>
           </section>
         </div>

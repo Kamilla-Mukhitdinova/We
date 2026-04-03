@@ -6,7 +6,10 @@ import {
   PasswordMap,
   SharedAppSnapshot,
   loadFromStorage,
+  loadLocalBackup,
+  loadLastLocalMutationAt,
   loadLocalSnapshot,
+  markLocalMutationAt,
   normalizeSharedSnapshot,
   saveLocalSnapshot,
 } from './app-persistence';
@@ -65,6 +68,11 @@ interface DailyWishRow {
   message: string;
   date: string;
   created_at: string;
+}
+
+interface SharedSnapshotPayload {
+  snapshot: SharedAppSnapshot;
+  updatedAt: string | null;
 }
 
 interface AppState {
@@ -252,7 +260,17 @@ function mapDailyWishToDailyWishRow(pairId: string, wish: DailyWishMessage): Dai
 }
 
 async function loadSharedSnapshot(pairId: string): Promise<SharedAppSnapshot> {
-  if (!supabase) return initialSnapshot;
+  const result = await loadSharedSnapshotWithMeta(pairId);
+  return result.snapshot;
+}
+
+async function loadSharedSnapshotWithMeta(pairId: string): Promise<SharedSnapshotPayload> {
+  if (!supabase) {
+    return {
+      snapshot: initialSnapshot,
+      updatedAt: null,
+    };
+  }
 
   const [settingsResult, tasksResult, wishesResult, dailyWishesResult] = await Promise.all([
     supabase
@@ -278,18 +296,24 @@ async function loadSharedSnapshot(pairId: string): Promise<SharedAppSnapshot> {
     (dailyWishesResult.data?.length ?? 0) > 0;
 
   if (!hasRemoteData) {
-    return getEmptySnapshot();
+    return {
+      snapshot: getEmptySnapshot(),
+      updatedAt: settingsResult.data?.updated_at ?? null,
+    };
   }
 
-  return normalizeSharedSnapshot({
-    tasks: (tasksResult.data ?? []).map((task) => mapTaskRowToTask(task as TaskRow)),
-    wishes: (wishesResult.data ?? []).map((wish) => mapWishRowToWish(wish as WishRow)),
-    dailyWishes: (dailyWishesResult.data ?? []).map((wish) => mapDailyWishRowToDailyWish(wish as DailyWishRow)),
-    categories: settingsResult.data?.categories ?? undefined,
-    wishCategories: settingsResult.data?.wish_categories ?? undefined,
-    customHadiths: settingsResult.data?.custom_hadiths ?? undefined,
-    passwords: DEFAULT_PASSWORDS,
-  });
+  return {
+    snapshot: normalizeSharedSnapshot({
+      tasks: (tasksResult.data ?? []).map((task) => mapTaskRowToTask(task as TaskRow)),
+      wishes: (wishesResult.data ?? []).map((wish) => mapWishRowToWish(wish as WishRow)),
+      dailyWishes: (dailyWishesResult.data ?? []).map((wish) => mapDailyWishRowToDailyWish(wish as DailyWishRow)),
+      categories: settingsResult.data?.categories ?? undefined,
+      wishCategories: settingsResult.data?.wish_categories ?? undefined,
+      customHadiths: settingsResult.data?.custom_hadiths ?? undefined,
+      passwords: DEFAULT_PASSWORDS,
+    }),
+    updatedAt: settingsResult.data?.updated_at ?? null,
+  };
 }
 
 async function warmUpSharedSnapshot(pairId: string) {
@@ -373,6 +397,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const hasHydratedSharedRef = useRef(!isSupabaseConfigured);
   const skipNextSharedSyncRef = useRef(false);
   const localChangeVersionRef = useRef(0);
+  const lastSharedSyncVersionRef = useRef(0);
   const storageMode: StorageMode = isSupabaseConfigured ? 'shared' : 'local';
 
   const snapshot = useMemo(
@@ -401,6 +426,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const applyRemoteSnapshot = useCallback(
     (nextSnapshot: SharedAppSnapshot) => {
       skipNextSharedSyncRef.current = true;
+      lastSharedSyncVersionRef.current = localChangeVersionRef.current;
       applySnapshot(nextSnapshot);
     },
     [applySnapshot]
@@ -411,15 +437,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const startedAtVersion = localChangeVersionRef.current;
 
     try {
-      const remoteSnapshot = await withTimeout(loadSharedSnapshot(pairId), 'loadSharedSnapshot', READ_TIMEOUT_MS);
+      const { snapshot: remoteSnapshot, updatedAt: remoteUpdatedAt } = await withTimeout(
+        loadSharedSnapshotWithMeta(pairId),
+        'loadSharedSnapshot',
+        READ_TIMEOUT_MS
+      );
+      const localBackup = loadLocalBackup();
+      const lastLocalMutationAt = loadLastLocalMutationAt();
       const hasRemoteContent =
         remoteSnapshot.tasks.length > 0 ||
         remoteSnapshot.wishes.length > 0 ||
         remoteSnapshot.dailyWishes.length > 0;
+      const localBackupSavedAt = localBackup?.savedAt ? new Date(localBackup.savedAt).getTime() : 0;
+      const localMutationTimestamp = lastLocalMutationAt ? new Date(lastLocalMutationAt).getTime() : 0;
+      const remoteSnapshotUpdatedAt = remoteUpdatedAt ? new Date(remoteUpdatedAt).getTime() : 0;
+      const shouldPromoteLocalSnapshot =
+        (localMutationTimestamp > remoteSnapshotUpdatedAt ||
+          (localBackup?.hasContent && localBackupSavedAt > remoteSnapshotUpdatedAt)) &&
+        localChangeVersionRef.current === startedAtVersion;
 
-      if (!hasRemoteContent) {
+      if (!hasRemoteContent || shouldPromoteLocalSnapshot) {
         await withTimeout(replaceSharedSnapshot(pairId, snapshot), 'replaceSharedSnapshot', WRITE_TIMEOUT_MS);
         if (localChangeVersionRef.current === startedAtVersion) {
+          lastSharedSyncVersionRef.current = localChangeVersionRef.current;
           applyRemoteSnapshot(snapshot);
         }
       } else if (localChangeVersionRef.current === startedAtVersion) {
@@ -438,6 +478,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const markLocalChange = useCallback(() => {
     localChangeVersionRef.current += 1;
+    markLocalMutationAt();
   }, []);
 
   useEffect(() => {
@@ -488,8 +529,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setActiveUser(owner);
       setIsAuthenticated(true);
       setCurrentPairId(SUPABASE_STATE_ROW_ID);
-      hasHydratedSharedRef.current = true;
-      setSyncStatus('online');
+      hasHydratedSharedRef.current = false;
+      setSyncStatus('syncing');
       setSyncError(null);
       setIsBootstrapping(false);
 
@@ -515,8 +556,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setActiveUser(owner);
       setIsAuthenticated(true);
       setCurrentPairId(SUPABASE_STATE_ROW_ID);
-      hasHydratedSharedRef.current = true;
-      setSyncStatus('online');
+      hasHydratedSharedRef.current = false;
+      setSyncStatus('syncing');
       setSyncError(null);
       setIsBootstrapping(false);
       void hydrateSharedInBackground(SUPABASE_STATE_ROW_ID);
@@ -543,6 +584,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     syncTimerRef.current = window.setTimeout(async () => {
       try {
         await withTimeout(replaceSharedSnapshot(currentPairId, snapshot), 'replaceSharedSnapshot', WRITE_TIMEOUT_MS);
+        lastSharedSyncVersionRef.current = localChangeVersionRef.current;
         setSyncStatus('online');
         setSyncError(null);
       } catch (error) {
@@ -566,9 +608,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         window.clearTimeout(remoteRefreshTimerRef.current);
       }
 
+      const scheduledAtVersion = localChangeVersionRef.current;
       remoteRefreshTimerRef.current = window.setTimeout(async () => {
         try {
           const remoteSnapshot = await withTimeout(loadSharedSnapshot(currentPairId), 'loadSharedSnapshot', READ_TIMEOUT_MS);
+          const hasPendingLocalChanges = localChangeVersionRef.current !== lastSharedSyncVersionRef.current;
+          const localChangedSinceSchedule = localChangeVersionRef.current !== scheduledAtVersion;
+          if (hasPendingLocalChanges || localChangedSinceSchedule) {
+            return;
+          }
           applyRemoteSnapshot(remoteSnapshot);
           setSyncStatus('online');
           setSyncError(null);
