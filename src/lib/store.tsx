@@ -336,7 +336,6 @@ async function replaceSharedSnapshot(pairId: string, snapshot: SharedAppSnapshot
     categories: snapshot.categories,
     wish_categories: snapshot.wishCategories,
     custom_hadiths: snapshot.customHadiths,
-    updated_at: new Date().toISOString(),
   };
 
   const tasksPayload: TaskRow[] = snapshot.tasks.map((task) => mapTaskToTaskRow(pairId, task));
@@ -371,6 +370,12 @@ async function replaceSharedSnapshot(pairId: string, snapshot: SharedAppSnapshot
     const { error: dailyWishesError } = await supabase.from('daily_wishes').insert(dailyWishesPayload);
     if (dailyWishesError) throw dailyWishesError;
   }
+
+  const { error: finalizeSettingsError } = await supabase
+    .from('pair_settings')
+    .update({ updated_at: new Date().toISOString() })
+    .eq('pair_id', pairId);
+  if (finalizeSettingsError) throw finalizeSettingsError;
 }
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
