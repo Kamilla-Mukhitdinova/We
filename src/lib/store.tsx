@@ -442,6 +442,16 @@ async function removeTaskRow(pairId: string, taskId: string) {
   if (error) throw error;
 }
 
+async function touchPairSettings(pairId: string) {
+  if (!supabase) return;
+
+  const { error } = await supabase.from('pair_settings').upsert({
+    pair_id: pairId,
+    updated_at: new Date().toISOString(),
+  });
+  if (error) throw error;
+}
+
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [activeUser, setActiveUser] = useState<Owner>(() => loadFromStorage<Owner>(LOCAL_KEYS.activeUser, 'Kamilla'));
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() =>
@@ -833,7 +843,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setTasks((prev) => [...prev, nextTask]);
 
     if (supabase && currentPairId) {
-      void withTimeout(syncTaskRow(currentPairId, nextTask), 'syncTaskRow', WRITE_TIMEOUT_MS)
+      void withTimeout(
+        (async () => {
+          await syncTaskRow(currentPairId, nextTask);
+          await touchPairSettings(currentPairId);
+        })(),
+        'syncTaskRow',
+        WRITE_TIMEOUT_MS
+      )
         .then(() => {
           setSyncStatus('online');
           setSyncError(null);
@@ -866,7 +883,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (supabase && currentPairId) {
       queueMicrotask(() => {
         if (!syncedTask) return;
-        void withTimeout(syncTaskRow(currentPairId, syncedTask as Task), 'syncTaskRow', WRITE_TIMEOUT_MS)
+        void withTimeout(
+          (async () => {
+            await syncTaskRow(currentPairId, syncedTask as Task);
+            await touchPairSettings(currentPairId);
+          })(),
+          'syncTaskRow',
+          WRITE_TIMEOUT_MS
+        )
           .then(() => {
             setSyncStatus('online');
             setSyncError(null);
@@ -908,7 +932,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (supabase && currentPairId) {
       queueMicrotask(() => {
         if (!syncedTask) return;
-        void withTimeout(syncTaskRow(currentPairId, syncedTask as Task), 'syncTaskRow', WRITE_TIMEOUT_MS)
+        void withTimeout(
+          (async () => {
+            await syncTaskRow(currentPairId, syncedTask as Task);
+            await touchPairSettings(currentPairId);
+          })(),
+          'syncTaskRow',
+          WRITE_TIMEOUT_MS
+        )
           .then(() => {
             setSyncStatus('online');
             setSyncError(null);
@@ -926,7 +957,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setTasks((prev) => prev.filter((task) => task.id !== id));
 
     if (supabase && currentPairId) {
-      void withTimeout(removeTaskRow(currentPairId, id), 'removeTaskRow', WRITE_TIMEOUT_MS)
+      void withTimeout(
+        (async () => {
+          await removeTaskRow(currentPairId, id);
+          await touchPairSettings(currentPairId);
+        })(),
+        'removeTaskRow',
+        WRITE_TIMEOUT_MS
+      )
         .then(() => {
           setSyncStatus('online');
           setSyncError(null);
