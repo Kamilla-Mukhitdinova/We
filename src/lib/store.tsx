@@ -76,6 +76,10 @@ interface SharedSnapshotPayload {
   updatedAt: string | null;
 }
 
+interface ProfileRow {
+  pair_id: string;
+}
+
 interface SharedSettingsSnapshot {
   wishes: Wish[];
   categories: string[];
@@ -345,6 +349,19 @@ async function warmUpSharedSnapshot(pairId: string) {
   if (error) throw error;
 }
 
+async function loadPairIdForUser(userId: string): Promise<string | null> {
+  if (!supabase) return SUPABASE_STATE_ROW_ID;
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('pair_id')
+    .eq('id', userId)
+    .maybeSingle<ProfileRow>();
+
+  if (error) throw error;
+  return data?.pair_id ?? null;
+}
+
 async function replaceSharedSnapshot(pairId: string, snapshot: SharedAppSnapshot) {
   if (!supabase) return;
 
@@ -491,6 +508,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const skipNextSharedSyncRef = useRef(false);
   const localChangeVersionRef = useRef(0);
   const lastSharedSyncVersionRef = useRef(0);
+  const pendingTaskDeletesRef = useRef<Set<string>>(new Set());
   const storageMode: StorageMode = isSupabaseConfigured ? 'shared' : 'local';
 
   const snapshot = useMemo(
@@ -569,7 +587,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           applyRemoteSnapshot(snapshot);
         }
       } else if (localChangeVersionRef.current === startedAtVersion) {
-        applyRemoteSnapshot(remoteSnapshot);
+        const pendingDeletes = pendingTaskDeletesRef.current;
+        if (pendingDeletes.size > 0) {
+          applyRemoteSnapshot({
+            ...remoteSnapshot,
+            tasks: remoteSnapshot.tasks.filter((task) => !pendingDeletes.has(task.id)),
+          });
+        } else {
+          applyRemoteSnapshot(remoteSnapshot);
+        }
       }
 
       hasHydratedSharedRef.current = true;
@@ -659,15 +685,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      let pairId = SUPABASE_STATE_ROW_ID;
+      const userId = data.session?.user?.id;
+      if (userId) {
+        try {
+          const profilePairId = await loadPairIdForUser(userId);
+          if (!mounted) return;
+          if (profilePairId) pairId = profilePairId;
+        } catch {
+          // keep env fallback
+        }
+      }
+
       setActiveUser(owner);
       setIsAuthenticated(true);
-      setCurrentPairId(SUPABASE_STATE_ROW_ID);
+      setCurrentPairId(pairId);
       hasHydratedSharedRef.current = false;
       setSyncStatus('syncing');
       setSyncError(null);
       setIsBootstrapping(false);
 
-      void hydrateSharedInBackground(SUPABASE_STATE_ROW_ID);
+      void hydrateSharedInBackground(pairId);
     };
 
     hydrateSession();
@@ -686,14 +724,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setCurrentPairId(null);
         return;
       }
+      let pairId = SUPABASE_STATE_ROW_ID;
+      const userId = session?.user?.id;
+      if (userId) {
+        try {
+          const profilePairId = await loadPairIdForUser(userId);
+          if (profilePairId) pairId = profilePairId;
+        } catch {
+          // keep env fallback
+        }
+      }
+
       setActiveUser(owner);
       setIsAuthenticated(true);
-      setCurrentPairId(SUPABASE_STATE_ROW_ID);
+      setCurrentPairId(pairId);
       hasHydratedSharedRef.current = false;
       setSyncStatus('syncing');
       setSyncError(null);
       setIsBootstrapping(false);
-      void hydrateSharedInBackground(SUPABASE_STATE_ROW_ID);
+      void hydrateSharedInBackground(pairId);
     });
 
     return () => {
@@ -774,6 +823,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [currentPairId, isAuthenticated, refreshSharedSnapshot]);
+
+  useEffect(() => {
+    if (!supabase || !isAuthenticated || !currentPairId) return;
+    if (pendingTaskDeletesRef.current.size === 0) return;
+
+    const ids = Array.from(pendingTaskDeletesRef.current);
+    void Promise.all(ids.map((id) => removeTaskRow(id)))
+      .then(async () => {
+        pendingTaskDeletesRef.current.clear();
+        await touchPairSettings(currentPairId);
+        lastSharedSyncVersionRef.current = localChangeVersionRef.current;
+      })
+      .catch(() => {
+        // keep ids for next retry
+      });
+  }, [currentPairId, isAuthenticated]);
 
   const login = useCallback(
     async (user: Owner, password: string) => {
@@ -980,6 +1045,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const deleteTask = useCallback((id: string) => {
     markLocalChange();
     setTasks((prev) => prev.filter((task) => task.id !== id));
+
+    if (supabase && !currentPairId) {
+      pendingTaskDeletesRef.current.add(id);
+      return;
+    }
 
     if (supabase && currentPairId) {
       void withTimeout(
