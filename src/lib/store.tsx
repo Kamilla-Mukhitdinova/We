@@ -448,10 +448,11 @@ async function syncTaskRow(pairId: string, task: Task) {
   if (error) throw error;
 }
 
-async function removeTaskRow(pairId: string, taskId: string) {
+async function removeTaskRow(taskId: string) {
   if (!supabase) return;
 
-  const { error } = await supabase.from('tasks').delete().eq('pair_id', pairId).eq('id', taskId);
+  // Delete by primary key only. RLS still limits access to own pair rows.
+  const { error } = await supabase.from('tasks').delete().eq('id', taskId);
   if (error) throw error;
 }
 
@@ -983,7 +984,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (supabase && currentPairId) {
       void withTimeout(
         (async () => {
-          await removeTaskRow(currentPairId, id);
+          await removeTaskRow(id);
           await touchPairSettings(currentPairId);
         })(),
         'removeTaskRow',
