@@ -32,18 +32,18 @@ export function ChangePasswordDialog({
     event.preventDefault();
 
     if (!currentPassword || !nextPassword || !confirmPassword) {
-      toast.error('Заполните все поля');
+      toast.message('Заполните все поля');
       return;
     }
 
     if (nextPassword !== confirmPassword) {
-      toast.error('Новые пароли не совпадают');
+      toast.message('Новые пароли не совпадают');
       return;
     }
 
     const result = await changePassword(currentPassword, nextPassword);
     if (!result.ok) {
-      toast.error(result.message);
+      toast.message(result.message);
       return;
     }
 

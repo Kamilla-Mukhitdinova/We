@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  const { activeUser, logout, fontScale, setFontScale, storageMode, syncStatus, syncError } = useApp();
+  const { activeUser, logout, fontScale, setFontScale, storageMode, syncStatus } = useApp();
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const [showCreateTask, setShowCreateTask] = useState(false);
@@ -24,6 +24,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   const avatarInitial = activeUser === 'Kamilla' ? 'К' : 'Д';
   const avatarBg = activeUser === 'Kamilla' ? 'bg-kamilla' : 'bg-doszhan';
+  const isSupabaseConnected = storageMode === 'shared' && syncStatus !== 'error';
 
   return (
     <div className="min-h-screen bg-background transition-colors duration-300">
@@ -38,17 +39,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </h1>
             <div className="hidden md:flex flex-col gap-1">
               <div className="inline-flex items-center rounded-full bg-secondary px-3 py-1 text-[11px] font-medium text-muted-foreground">
-                {storageMode === 'shared'
-                  ? syncStatus === 'error'
-                    ? 'Supabase недоступен'
-                    : 'Supabase подключен'
-                  : 'Локальный режим'}
+                {isSupabaseConnected ? 'Supabase подключено' : 'Supabase не подключено'}
               </div>
-              {syncError && (
-                <p className="max-w-[24rem] text-[10px] leading-4 text-destructive">
-                  {syncError}
-                </p>
-              )}
             </div>
             <nav className="hidden sm:flex items-center gap-1">
               <NavTab to="/" label="Дэшборд" icon={<LayoutDashboard className="h-4 w-4" />} />

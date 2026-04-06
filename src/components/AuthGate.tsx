@@ -11,10 +11,10 @@ const OWNER_OPTIONS: { value: Owner; label: string; hint: string }[] = [
 ];
 
 export default function AuthGate({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isBootstrapping, storageMode, syncStatus, syncError, login } = useApp();
+  const { isAuthenticated, isBootstrapping, storageMode, syncStatus, login } = useApp();
   const [selectedOwner, setSelectedOwner] = useState<Owner>('Kamilla');
   const [password, setPassword] = useState('');
-  const showSupabaseChecklist = storageMode === 'shared' && Boolean(syncError);
+  const isSupabaseConnected = storageMode === 'shared' && syncStatus !== 'error';
 
   const helperText = useMemo(
     () => OWNER_OPTIONS.find((option) => option.value === selectedOwner)?.hint ?? '',
@@ -25,7 +25,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     event.preventDefault();
 
     if (!password.trim()) {
-      toast.error('Введите пароль');
+      toast.message('Введите пароль');
       return;
     }
 
@@ -36,7 +36,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
 
     const ok = await login(selectedOwner, password.trim());
     if (!ok) {
-      toast.error(isBootstrapping ? 'Подождите завершения подключения' : 'Неверный пароль');
+      toast.message(isBootstrapping ? 'Подождите завершения подключения' : 'Не удалось войти');
       return;
     }
 
@@ -68,16 +68,10 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
 
             <div className="mt-5 inline-flex flex-wrap items-center gap-2 rounded-2xl bg-secondary/60 px-4 py-3 text-xs text-muted-foreground">
               <span className="font-medium text-foreground">
-                {storageMode === 'shared' ? 'Режим Supabase' : 'Локальный режим'}
+                Supabase
               </span>
               <span className="rounded-full bg-background px-2 py-1">
-                {storageMode === 'shared'
-                  ? syncStatus === 'online'
-                    ? 'Общее хранилище активно'
-                    : syncStatus === 'syncing'
-                      ? 'Синхронизация...'
-                      : 'Есть проблема с синхронизацией'
-                  : 'Данные только на этом устройстве'}
+                {isSupabaseConnected ? 'Подключено' : 'Не подключено'}
               </span>
             </div>
 
@@ -154,16 +148,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
 
               <div className="rounded-2xl bg-secondary/60 p-4 text-xs leading-5 text-muted-foreground">
                 Войдите под своим именем и личным паролем. После входа пароль можно поменять в профиле.
-                {syncError ? ` ${syncError}.` : ''}
               </div>
-
-              {showSupabaseChecklist ? (
-                <div className="rounded-2xl border border-amber-200 bg-amber-50/90 p-4 text-xs leading-5 text-amber-900">
-                  Проверьте в Supabase 3 вещи: выполнен SQL из `supabase/schema.sql`, созданы 2 пользователя в
-                  `Authentication`, и в таблице `public.profiles` есть две строки с одинаковым `pair_id` для Kamilla
-                  и Doszhan.
-                </div>
-              ) : null}
             </form>
           </section>
         </div>

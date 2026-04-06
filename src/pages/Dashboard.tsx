@@ -74,12 +74,15 @@ export default function Dashboard() {
   const todayDate = new Date();
   const todayKey = toDateKey(todayDate);
 
-  const todayTasks = tasks.filter((task) => isTaskForDate(task, todayDate));
-  const kamillaTasks = todayTasks.filter((task) => task.owner === 'Kamilla');
-  const doszhanTasks = todayTasks.filter((task) => task.owner === 'Doszhan');
+  const kamillaTasks = tasks.filter((task) => task.owner === 'Kamilla');
+  const doszhanTasks = tasks.filter((task) => task.owner === 'Doszhan');
+  const getDoneCountForOwner = (ownerTasks: typeof tasks) =>
+    ownerTasks.filter((task) =>
+      task.kind === 'habit' ? getTaskStatusForDate(task, todayDate) === 'done' : task.status === 'done'
+    ).length;
   const statsByOwner = {
-    Kamilla: buildOwnerStats('Kamilla', kamillaTasks.length, kamillaTasks.filter((task) => getTaskStatusForDate(task, todayDate) === 'done').length),
-    Doszhan: buildOwnerStats('Doszhan', doszhanTasks.length, doszhanTasks.filter((task) => getTaskStatusForDate(task, todayDate) === 'done').length),
+    Kamilla: buildOwnerStats('Kamilla', kamillaTasks.length, getDoneCountForOwner(kamillaTasks)),
+    Doszhan: buildOwnerStats('Doszhan', doszhanTasks.length, getDoneCountForOwner(doszhanTasks)),
   };
   const stats = [statsByOwner[activeUser], statsByOwner[partner]];
 
@@ -168,7 +171,7 @@ export default function Dashboard() {
 
   const handleSendWish = () => {
     if (!wishMessage.trim()) {
-      toast.error('Напишите пожелание');
+      toast.message('Напишите пожелание');
       return;
     }
 
@@ -226,14 +229,14 @@ export default function Dashboard() {
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Статистика на сегодня</p>
+                <p className="text-sm text-muted-foreground">Статистика пары</p>
                 <h3 className="mt-1 font-display text-2xl font-bold">{stat.owner}</h3>
               </div>
               <div className="rounded-2xl bg-background px-3 py-2 text-xs font-medium text-primary shadow-sm">
                 {stat.owner === activeUser ? 'Вы сейчас здесь' : 'Ваш партнёр'}
               </div>
             </div>
-            <p className="mt-3 text-xs text-muted-foreground">Сегодняшние задачи и привычки</p>
+            <p className="mt-3 text-xs text-muted-foreground">Все задачи и привычки</p>
             <div className="mt-6 grid gap-3 sm:grid-cols-3">
               <StatMiniCard icon={<Target className="h-4 w-4" />} label="Поставлено" value={stat.total} />
               <StatMiniCard icon={<CheckCircle2 className="h-4 w-4" />} label="Выполнено" value={stat.done} />
@@ -244,7 +247,7 @@ export default function Dashboard() {
                 <div>
                   <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Общий прогресс</p>
                   <p className="mt-1 text-sm font-medium text-foreground/80">
-                    {stat.done} из {stat.total || 0} выполнено сегодня
+                    {stat.done} из {stat.total || 0} выполнено
                   </p>
                 </div>
                 <span className="rounded-full bg-background px-3 py-1 text-xs font-semibold text-primary shadow-sm">

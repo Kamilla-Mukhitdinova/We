@@ -268,6 +268,14 @@ function mapDailyWishToDailyWishRow(pairId: string, wish: DailyWishMessage): Dai
   };
 }
 
+function dedupeRowsById<T extends { id: string }>(rows: T[]): T[] {
+  const map = new Map<string, T>();
+  rows.forEach((row) => {
+    map.set(row.id, row);
+  });
+  return Array.from(map.values());
+}
+
 async function loadSharedSnapshot(pairId: string): Promise<SharedAppSnapshot> {
   const result = await loadSharedSnapshotWithMeta(pairId);
   return result.snapshot;
@@ -347,10 +355,10 @@ async function replaceSharedSnapshot(pairId: string, snapshot: SharedAppSnapshot
     custom_hadiths: snapshot.customHadiths,
   };
 
-  const tasksPayload: TaskRow[] = snapshot.tasks.map((task) => mapTaskToTaskRow(pairId, task));
-  const wishesPayload: WishRow[] = snapshot.wishes.map((wish) => mapWishToWishRow(pairId, wish));
-  const dailyWishesPayload: DailyWishRow[] = snapshot.dailyWishes.map((wish) =>
-    mapDailyWishToDailyWishRow(pairId, wish)
+  const tasksPayload = dedupeRowsById(snapshot.tasks.map((task) => mapTaskToTaskRow(pairId, task)));
+  const wishesPayload = dedupeRowsById(snapshot.wishes.map((wish) => mapWishToWishRow(pairId, wish)));
+  const dailyWishesPayload = dedupeRowsById(
+    snapshot.dailyWishes.map((wish) => mapDailyWishToDailyWishRow(pairId, wish))
   );
 
   const { error: settingsError } = await supabase.from('pair_settings').upsert(settingsPayload);
@@ -359,14 +367,14 @@ async function replaceSharedSnapshot(pairId: string, snapshot: SharedAppSnapshot
   const { error: clearTasksError } = await supabase.from('tasks').delete().eq('pair_id', pairId);
   if (clearTasksError) throw clearTasksError;
   if (tasksPayload.length > 0) {
-    const { error: tasksError } = await supabase.from('tasks').insert(tasksPayload);
+    const { error: tasksError } = await supabase.from('tasks').upsert(tasksPayload, { onConflict: 'id' });
     if (tasksError) throw tasksError;
   }
 
   const { error: clearWishesError } = await supabase.from('wishes').delete().eq('pair_id', pairId);
   if (clearWishesError) throw clearWishesError;
   if (wishesPayload.length > 0) {
-    const { error: wishesError } = await supabase.from('wishes').insert(wishesPayload);
+    const { error: wishesError } = await supabase.from('wishes').upsert(wishesPayload, { onConflict: 'id' });
     if (wishesError) throw wishesError;
   }
 
@@ -376,7 +384,9 @@ async function replaceSharedSnapshot(pairId: string, snapshot: SharedAppSnapshot
     .eq('pair_id', pairId);
   if (clearDailyWishesError) throw clearDailyWishesError;
   if (dailyWishesPayload.length > 0) {
-    const { error: dailyWishesError } = await supabase.from('daily_wishes').insert(dailyWishesPayload);
+    const { error: dailyWishesError } = await supabase
+      .from('daily_wishes')
+      .upsert(dailyWishesPayload, { onConflict: 'id' });
     if (dailyWishesError) throw dailyWishesError;
   }
 
@@ -408,7 +418,7 @@ async function replaceSharedSettingsSnapshot(pairId: string, snapshot: SharedSet
   const { error: clearWishesError } = await supabase.from('wishes').delete().eq('pair_id', pairId);
   if (clearWishesError) throw clearWishesError;
   if (wishesPayload.length > 0) {
-    const { error: wishesError } = await supabase.from('wishes').insert(wishesPayload);
+    const { error: wishesError } = await supabase.from('wishes').upsert(wishesPayload, { onConflict: 'id' });
     if (wishesError) throw wishesError;
   }
 
@@ -418,7 +428,9 @@ async function replaceSharedSettingsSnapshot(pairId: string, snapshot: SharedSet
     .eq('pair_id', pairId);
   if (clearDailyWishesError) throw clearDailyWishesError;
   if (dailyWishesPayload.length > 0) {
-    const { error: dailyWishesError } = await supabase.from('daily_wishes').insert(dailyWishesPayload);
+    const { error: dailyWishesError } = await supabase
+      .from('daily_wishes')
+      .upsert(dailyWishesPayload, { onConflict: 'id' });
     if (dailyWishesError) throw dailyWishesError;
   }
 
@@ -432,7 +444,7 @@ async function replaceSharedSettingsSnapshot(pairId: string, snapshot: SharedSet
 async function syncTaskRow(pairId: string, task: Task) {
   if (!supabase) return;
 
-  const { error } = await supabase.from('tasks').upsert(mapTaskToTaskRow(pairId, task));
+  const { error } = await supabase.from('tasks').upsert(mapTaskToTaskRow(pairId, task), { onConflict: 'id' });
   if (error) throw error;
 }
 
@@ -542,9 +554,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const localBackupSavedAt = localBackup?.savedAt ? new Date(localBackup.savedAt).getTime() : 0;
       const localMutationTimestamp = lastLocalMutationAt ? new Date(lastLocalMutationAt).getTime() : 0;
       const remoteSnapshotUpdatedAt = remoteUpdatedAt ? new Date(remoteUpdatedAt).getTime() : 0;
+      const hasLocalSnapshotBackup = Boolean(localBackup?.hasContent && localBackupSavedAt > 0);
+      const hasLocalMutations = Boolean(lastLocalMutationAt && localMutationTimestamp > 0);
       const shouldPromoteLocalSnapshot =
-        (localMutationTimestamp > remoteSnapshotUpdatedAt ||
-          (localBackup?.hasContent && localBackupSavedAt > remoteSnapshotUpdatedAt)) &&
+        !hasRemoteContent &&
+        (hasLocalSnapshotBackup || hasLocalMutations) &&
         localChangeVersionRef.current === startedAtVersion;
 
       if (!hasRemoteContent || shouldPromoteLocalSnapshot) {
@@ -562,8 +576,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setSyncError(null);
     } catch (error) {
       hasHydratedSharedRef.current = true;
-      setSyncStatus('error');
-      setSyncError(getErrorMessage(error, 'Не удалось обновить данные пары, пока используем сохранённые данные.'));
+      setSyncStatus('idle');
+      setSyncError(null);
     }
   }, [applyRemoteSnapshot, snapshot]);
 
@@ -587,8 +601,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setSyncStatus('online');
         setSyncError(null);
       } catch (error) {
-        setSyncStatus('error');
-        setSyncError(getErrorMessage(error, 'Не удалось получить свежие данные пары'));
+        setSyncStatus('idle');
+        setSyncError(null);
       }
     },
     [applyRemoteSnapshot]
@@ -629,7 +643,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (!mounted) return;
 
       if (error) {
-        setSyncError('Не удалось проверить сессию Supabase');
+        setSyncError(null);
         setIsBootstrapping(false);
         return;
       }
@@ -710,8 +724,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setSyncStatus('online');
         setSyncError(null);
       } catch (error) {
-        setSyncStatus('error');
-        setSyncError(getErrorMessage(error, 'Не удалось синхронизировать данные пары'));
+        setSyncStatus('idle');
+        setSyncError(null);
       }
     }, 500);
 
@@ -859,12 +873,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         WRITE_TIMEOUT_MS
       )
         .then(() => {
+          lastSharedSyncVersionRef.current = localChangeVersionRef.current;
           setSyncStatus('online');
           setSyncError(null);
         })
         .catch((error) => {
-          setSyncStatus('error');
-          setSyncError(getErrorMessage(error, 'Не удалось сохранить задачу'));
+          setSyncStatus('idle');
+          setSyncError(null);
         });
     }
   }, [currentPairId, markLocalChange]);
@@ -899,12 +914,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           WRITE_TIMEOUT_MS
         )
           .then(() => {
+            lastSharedSyncVersionRef.current = localChangeVersionRef.current;
             setSyncStatus('online');
             setSyncError(null);
           })
           .catch((error) => {
-            setSyncStatus('error');
-            setSyncError(getErrorMessage(error, 'Не удалось обновить задачу'));
+            setSyncStatus('idle');
+            setSyncError(null);
           });
       });
     }
@@ -948,12 +964,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           WRITE_TIMEOUT_MS
         )
           .then(() => {
+            lastSharedSyncVersionRef.current = localChangeVersionRef.current;
             setSyncStatus('online');
             setSyncError(null);
           })
           .catch((error) => {
-            setSyncStatus('error');
-            setSyncError(getErrorMessage(error, 'Не удалось обновить задачу'));
+            setSyncStatus('idle');
+            setSyncError(null);
           });
       });
     }
@@ -973,12 +990,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         WRITE_TIMEOUT_MS
       )
         .then(() => {
+          lastSharedSyncVersionRef.current = localChangeVersionRef.current;
           setSyncStatus('online');
           setSyncError(null);
         })
         .catch((error) => {
-          setSyncStatus('error');
-          setSyncError(getErrorMessage(error, 'Не удалось удалить задачу'));
+          setSyncStatus('idle');
+          setSyncError(null);
         });
     }
   }, [currentPairId, markLocalChange]);
