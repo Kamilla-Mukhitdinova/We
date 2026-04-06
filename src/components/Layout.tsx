@@ -45,7 +45,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <nav className="hidden sm:flex items-center gap-1">
               <NavTab to="/" label="Дэшборд" icon={<LayoutDashboard className="h-4 w-4" />} />
               <NavTab to="/tasks" label="Мои задачи" icon={<ListTodo className="h-4 w-4" />} />
-              <NavTab to="/wishes" label="Мечты пары" icon={<Heart className="h-4 w-4" />} />
+              <NavTab to="/wishes" label="Мечты" icon={<Heart className="h-4 w-4" />} />
               <NavTab to="/analytics" label="Аналитика" icon={<BarChart3 className="h-4 w-4" />} />
             </nav>
           </div>

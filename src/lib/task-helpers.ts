@@ -16,9 +16,13 @@ export function isHabit(task: Task) {
 export function isHabitScheduledOn(task: Task, date: Date) {
   if (!isHabit(task)) return false;
 
-  const baseDate = startOfDay(getTaskBaseDate(task));
+  // Habit starts from creation date and can optionally end on deadline date.
+  const baseDate = startOfDay(new Date(task.createdAt));
   const targetDate = startOfDay(date);
+  const endDate = task.dueDateTime ? startOfDay(new Date(task.dueDateTime)) : null;
+
   if (isBefore(targetDate, baseDate)) return false;
+  if (endDate && isBefore(endDate, targetDate)) return false;
 
   const recurrence = task.recurrence ?? 'daily';
   if (recurrence === 'daily') return true;

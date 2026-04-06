@@ -144,7 +144,7 @@ export function EditTaskDialog({ task, open, onClose }: { task: Task | null; ope
             </Select>
           </div>
           <div>
-            <Label>Дедлайн</Label>
+            <Label>{kind === 'habit' ? 'До какой даты повторять' : 'Дедлайн'}</Label>
             <Input type="datetime-local" value={dueDateTime} onChange={e => setDueDateTime(e.target.value)} />
           </div>
           <div className="flex justify-end pt-2">

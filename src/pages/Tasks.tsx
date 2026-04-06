@@ -1,21 +1,18 @@
 import { useMemo, useState } from 'react';
-import { format, parseISO, subDays } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { motion } from 'framer-motion';
 import {
   BookOpenText,
   BriefcaseBusiness,
   CalendarDays,
-  ChevronDown,
   CheckCircle2,
   Columns3,
   Dumbbell,
-  Flame,
   Home,
   Landmark,
   Pencil,
   Plus,
-  Repeat2,
   Settings,
   Sparkles,
   Trash2,
@@ -53,27 +50,6 @@ function getCategoryMeta(category: string): { icon: LucideIcon; bg: string; text
   return { icon: Landmark, bg: 'bg-rose-100', text: 'text-rose-700' };
 }
 
-function translateRecurrence(task: Task) {
-  if (task.kind !== 'habit') return 'Разовая задача';
-  if (task.recurrence === 'weekdays') return 'По будням';
-  if (task.recurrence === 'custom') return 'В выбранные дни';
-  if (task.recurrence === 'none') return 'В конкретный день';
-  return 'Каждый день';
-}
-
-function getHabitStreak(task: Task, fromDate: Date) {
-  let streak = 0;
-
-  for (let offset = 0; offset < 60; offset += 1) {
-    const date = subDays(fromDate, offset);
-    if (!isTaskForDate(task, date)) continue;
-    if (getTaskStatusForDate(task, date) !== 'done') break;
-    streak += 1;
-  }
-
-  return streak;
-}
-
 export default function Tasks() {
   const { activeUser, tasks, updateTask, toggleTaskForDate, deleteTask, categories } = useApp();
   const [plannerView, setPlannerView] = useState<PlannerView>('list');
@@ -83,7 +59,6 @@ export default function Tasks() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
-  const [collapsedKanbanGroups, setCollapsedKanbanGroups] = useState<Record<string, boolean>>({});
   const todayDate = new Date();
   const todayKey = toDateKey(todayDate);
   const selectedDateKey = toDateKey(selectedDate);
@@ -102,14 +77,6 @@ export default function Tasks() {
   const todayTasks = useMemo(
     () => myTasks.filter((task) => isTaskForDate(task, todayDate)),
     [myTasks, todayDate]
-  );
-
-  const myHabits = useMemo(
-    () =>
-      tasks
-        .filter((task) => task.owner === activeUser && task.kind === 'habit')
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
-    [activeUser, tasks]
   );
 
   const groupedByCategory = useMemo(() => {
@@ -164,13 +131,6 @@ export default function Tasks() {
     if (!resolvedTaskId) return;
     updateTask(resolvedTaskId, { status });
     setDraggedTaskId(null);
-  };
-
-  const toggleKanbanGroup = (groupKey: string) => {
-    setCollapsedKanbanGroups((prev) => ({
-      ...prev,
-      [groupKey]: !prev[groupKey],
-    }));
   };
 
   return (
@@ -352,66 +312,29 @@ export default function Tasks() {
                                   {translateCategory(category)}
                                 </span>
                               </div>
-                              {[
-                                { key: 'habit', label: 'Привычки', items: tasksInCategory.filter((task) => task.kind === 'habit') },
-                                { key: 'task', label: 'Задачи', items: tasksInCategory.filter((task) => task.kind !== 'habit') },
-                              ]
-                                .filter((group) => group.items.length > 0)
-                                .map((group) => {
-                                  const groupKey = `${column.status}-${category}-${group.key}`;
-                                  const isCollapsed = !!collapsedKanbanGroups[groupKey];
-
-                                  return (
-                                    <div key={group.key} className="rounded-[1.2rem] bg-background/75 p-2 shadow-sm">
-                                      <button
-                                        onClick={() => toggleKanbanGroup(groupKey)}
-                                        className="flex w-full items-center justify-between gap-3 rounded-[1rem] px-2 py-2 text-left transition-colors hover:bg-secondary/60"
-                                      >
-                                        <div className="flex items-center gap-2">
-                                          <span className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-semibold ${
-                                            group.key === 'habit' ? 'bg-violet-100 text-violet-700' : 'bg-sky-100 text-sky-700'
-                                          }`}>
-                                            {group.items.length}
-                                          </span>
-                                          <span className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                                            {group.label}
-                                          </span>
-                                        </div>
-                                        <ChevronDown
-                                          className={`h-4 w-4 text-muted-foreground transition-transform ${
-                                            isCollapsed ? '' : 'rotate-180'
-                                          }`}
-                                        />
-                                      </button>
-
-                                      {!isCollapsed && (
-                                        <div className="mt-2 space-y-2">
-                                          {group.items.map((task) => (
-                                            <div
-                                              key={task.id}
-                                              draggable
-                                              onDragStart={(event) => {
-                                                setDraggedTaskId(task.id);
-                                                event.dataTransfer.setData('text/plain', task.id);
-                                                event.dataTransfer.effectAllowed = 'move';
-                                              }}
-                                              onDragEnd={() => setDraggedTaskId(null)}
-                                            >
-                                              <TaskCard
-                                                task={task}
-                                                compact
-                                                referenceDate={todayDate}
-                                                onEdit={() => setEditingTask(task)}
-                                                onDelete={() => deleteTask(task.id)}
-                                                onToggleDone={() => toggleTaskForDate(task.id, todayKey)}
-                                              />
-                                            </div>
-                                          ))}
-                                        </div>
-                                      )}
-                                    </div>
-                                  );
-                                })}
+                              <div className="space-y-2">
+                                {tasksInCategory.map((task) => (
+                                  <div
+                                    key={task.id}
+                                    draggable
+                                    onDragStart={(event) => {
+                                      setDraggedTaskId(task.id);
+                                      event.dataTransfer.setData('text/plain', task.id);
+                                      event.dataTransfer.effectAllowed = 'move';
+                                    }}
+                                    onDragEnd={() => setDraggedTaskId(null)}
+                                  >
+                                    <TaskCard
+                                      task={task}
+                                      compact
+                                      referenceDate={todayDate}
+                                      onEdit={() => setEditingTask(task)}
+                                      onDelete={() => deleteTask(task.id)}
+                                      onToggleDone={() => toggleTaskForDate(task.id, todayKey)}
+                                    />
+                                  </div>
+                                ))}
+                              </div>
                             </div>
                           ))
                         )}
@@ -516,53 +439,6 @@ export default function Tasks() {
         </TabsContent>
       </Tabs>
 
-      <motion.section
-        initial={{ opacity: 0, y: 14 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.08 }}
-        className="rounded-[1.8rem] border bg-card p-5"
-      >
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-[11px] font-medium text-primary">
-              <Repeat2 className="h-3.5 w-3.5" />
-              Ритм дня
-            </div>
-            <h3 className="mt-2 font-display text-2xl font-bold">Мои привычки</h3>
-            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-              Повторяющиеся дела собраны отдельно, чтобы их было проще отмечать и отслеживать.
-            </p>
-          </div>
-          <button
-            onClick={() => setShowCreate(true)}
-            className="rounded-2xl border px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-          >
-            Добавить привычку
-          </button>
-        </div>
-
-        {myHabits.length === 0 ? (
-          <div className="mt-4 rounded-[1.4rem] bg-secondary/35 px-5 py-8 text-center text-sm text-muted-foreground">
-            Пока нет привычек. Можно добавить, например, Коран, спорт, учёбу или чтение.
-          </div>
-        ) : (
-          <div className="mt-4 grid gap-3 xl:grid-cols-2">
-            {myHabits.map((habit, index) => (
-              <HabitCard
-                key={habit.id}
-                habit={habit}
-                todayDate={todayDate}
-                todayKey={todayKey}
-                delay={index * 0.04}
-                onEdit={() => setEditingTask(habit)}
-                onDelete={() => deleteTask(habit.id)}
-                onToggleToday={() => toggleTaskForDate(habit.id, todayKey)}
-              />
-            ))}
-          </div>
-        )}
-      </motion.section>
-
       <CreateTaskDialog open={showCreate} onClose={() => setShowCreate(false)} />
       <EditTaskDialog task={editingTask} open={!!editingTask} onClose={() => setEditingTask(null)} />
       <ManageCategoriesDialog open={showCategories} onClose={() => setShowCategories(false)} type="task" />
@@ -586,139 +462,6 @@ function CategoryHeader({ category, count }: { category: string; count: number }
         </div>
       </div>
     </div>
-  );
-}
-
-function HabitCard({
-  habit,
-  todayDate,
-  todayKey,
-  delay,
-  onEdit,
-  onDelete,
-  onToggleToday,
-}: {
-  habit: Task;
-  todayDate: Date;
-  todayKey: string;
-  delay: number;
-  onEdit: () => void;
-  onDelete: () => void;
-  onToggleToday: () => void;
-}) {
-  const meta = getCategoryMeta(habit.category);
-  const Icon = meta.icon;
-  const streak = getHabitStreak(habit, todayDate);
-  const doneToday = getTaskStatusForDate(habit, todayDate) === 'done';
-  const recentDays = Array.from({ length: 7 }, (_, index) => subDays(todayDate, 6 - index));
-
-  return (
-    <motion.article
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay }}
-      className="rounded-[1.5rem] border bg-secondary/10 p-4"
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-3">
-          <div className={`mt-1 flex h-10 w-10 items-center justify-center rounded-2xl ${meta.bg} ${meta.text}`}>
-            <Icon className="h-4 w-4" />
-          </div>
-          <div>
-            <h4 className="font-display text-xl font-bold leading-none">{habit.title}</h4>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-medium ${meta.bg} ${meta.text}`}>
-                <Icon className="h-3.5 w-3.5" />
-                {translateCategory(habit.category)}
-              </span>
-              <span className="inline-flex items-center gap-2 rounded-full bg-background px-3 py-1 text-[11px] font-medium text-muted-foreground">
-                <Repeat2 className="h-3.5 w-3.5" />
-                {translateRecurrence(habit)}
-              </span>
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center gap-1">
-          <button onClick={onEdit} className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-background hover:text-foreground">
-            <Pencil className="h-4 w-4" />
-          </button>
-          <button onClick={onDelete} className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-background hover:text-destructive">
-            <Trash2 className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
-
-      <div className="mt-4 grid gap-3 sm:grid-cols-[0.92fr_1.08fr]">
-        <div className="rounded-[1.2rem] bg-background/90 p-3.5 shadow-sm">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Сегодня</p>
-              <p className="mt-1.5 text-sm font-medium text-foreground/80">
-                {doneToday ? 'Привычка уже отмечена' : 'Ещё можно отметить выполнение'}
-              </p>
-            </div>
-            <button
-              onClick={onToggleToday}
-              className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
-                doneToday
-                  ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                  : 'bg-primary text-primary-foreground hover:opacity-90'
-              }`}
-            >
-              {doneToday ? 'Сделано' : 'Отметить'}
-            </button>
-          </div>
-
-          <div className="mt-3 flex items-center gap-3 rounded-[1rem] bg-secondary/35 px-3 py-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-amber-100 text-amber-700">
-              <Flame className="h-4.5 w-4.5" />
-            </div>
-            <div>
-              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Серия</p>
-              <p className="mt-1 text-base font-semibold">{streak} дней подряд</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-[1.2rem] bg-background/90 p-3.5 shadow-sm">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Последние 7 дней</p>
-              <p className="mt-1 text-xs text-muted-foreground">Лёгкий обзор без переходов по датам</p>
-            </div>
-            <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
-              {todayKey}
-            </span>
-          </div>
-
-          <div className="mt-3 grid grid-cols-7 gap-1.5">
-            {recentDays.map((date) => {
-              const scheduled = isTaskForDate(habit, date);
-              const done = scheduled && getTaskStatusForDate(habit, date) === 'done';
-
-              return (
-                <div key={toDateKey(date)} className="text-center">
-                  <p className="mb-1.5 text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                    {format(date, 'EEEEE', { locale: ru })}
-                  </p>
-                  <div
-                    className={`mx-auto flex h-8.5 w-8.5 items-center justify-center rounded-2xl border text-[11px] font-semibold transition-colors ${
-                      done
-                        ? 'border-emerald-200 bg-emerald-500 text-white'
-                        : scheduled
-                          ? 'border-border bg-secondary text-muted-foreground'
-                          : 'border-dashed border-border bg-background text-muted-foreground/40'
-                    }`}
-                  >
-                    {done ? <CheckCircle2 className="h-4 w-4" /> : format(date, 'd')}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-    </motion.article>
   );
 }
 

@@ -167,7 +167,7 @@ export function CreateTaskDialog({ open, onClose }: { open: boolean; onClose: ()
             )}
           </div>
           <div>
-            <Label>Дедлайн (необязательно)</Label>
+            <Label>{kind === 'habit' ? 'До какой даты повторять (необязательно)' : 'Дедлайн (необязательно)'}</Label>
             <Input type="datetime-local" value={dueDateTime} onChange={e => setDueDateTime(e.target.value)} />
           </div>
           <div className="flex items-center justify-between pt-2">
