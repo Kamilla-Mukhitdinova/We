@@ -1234,6 +1234,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       id: crypto.randomUUID(),
       title: input.title.trim(),
       notes: input.notes?.trim() || undefined,
+      imageUrl: input.imageUrl,
       isRecurring: input.isRecurring,
       status: 'todo',
       owner: activeUser,

@@ -50,6 +50,7 @@ export interface HomePurchase {
   id: string;
   title: string;
   notes?: string;
+  imageUrl?: string;
   owner: Owner;
   isRecurring: boolean;
   status: 'todo' | 'done';
