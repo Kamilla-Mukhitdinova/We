@@ -211,23 +211,22 @@ export default function Dashboard() {
       <motion.section
         initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
-        className="dashboard-hero overflow-hidden rounded-[2rem] border bg-card"
+        className="dashboard-hero relative overflow-hidden rounded-[2rem] border bg-card"
       >
+        <div className="pointer-events-none absolute -left-16 -top-20 h-52 w-52 rounded-full bg-emerald-300/20 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-24 -right-12 h-56 w-56 rounded-full bg-sky-300/20 blur-3xl" />
         <div className="grid items-center gap-6 p-8 lg:grid-cols-[1.2fr_0.8fr]">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-background/70 px-4 py-2 text-xs font-medium text-primary shadow-sm">
+            <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-background/85 px-4 py-2 text-xs font-medium text-primary shadow-sm backdrop-blur">
               <Sparkles className="h-4 w-4" />
               Наш Дэшборд 
             </div>
             <h2 className="mt-4 max-w-3xl font-display text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
               Пусть все строится из мягкости, верности, красивых намерений и маленьких дел, сделанных ради Аллаха.
             </h2>
-            <p className="mt-4 max-w-2xl text-sm leading-6 text-muted-foreground">
-              {activeUser}, здесь собрана дневная опора: личный прогресс, задачи на сегодня, хадис дня и тёплые слова друг для друга.
-            </p>
           </div>
           <div className="relative hidden lg:flex justify-center">
-            <div className="absolute inset-0 rounded-full bg-emerald-400/10 blur-3xl" />
+            <div className="absolute inset-0 rounded-full bg-emerald-400/15 blur-3xl" />
             <img src={coupleImg} alt="Romantic Muslim couple illustration" className="relative h-72 w-auto rounded-[2rem] object-cover shadow-xl opacity-95" />
           </div>
         </div>

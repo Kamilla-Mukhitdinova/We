@@ -44,14 +44,13 @@ export default function Wishes() {
       <motion.section
         initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
-        className="rounded-[2rem] border bg-card p-6"
+        className="relative overflow-hidden rounded-[2rem] border bg-card p-6"
       >
+        <div className="pointer-events-none absolute -left-12 -top-16 h-44 w-44 rounded-full bg-rose-300/20 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-20 -right-10 h-48 w-48 rounded-full bg-amber-300/20 blur-3xl" />
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h2 className="font-display text-3xl font-bold">Мечты</h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Здесь ваши личные мечты, личные мечты партнёра и общие планы пары. Всё разделено по категориям, чтобы было легко смотреть и вдохновляться.
-            </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
