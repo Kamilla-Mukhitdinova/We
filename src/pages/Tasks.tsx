@@ -143,9 +143,6 @@ export default function Tasks() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h2 className="font-display text-3xl font-bold">Мои задачи</h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Список, канбан и календарь работают как единая система. Можно планировать задачи и привычки, отмечать выполнение и видеть свою нагрузку по дням.
-            </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
@@ -354,9 +351,6 @@ export default function Tasks() {
               className="rounded-[1.8rem] border bg-card p-5"
             >
               <h3 className="font-display text-2xl font-bold">Интерактивный календарь</h3>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                Выбирайте день, распределяйте задачи и привычки по категориям, отслеживайте выполненные пункты и прогресс дня в удобном визуальном формате.
-              </p>
               <Calendar
                 mode="single"
                 selected={selectedDate}
@@ -365,12 +359,6 @@ export default function Tasks() {
                 modifiersClassNames={{ scheduled: 'border border-primary/40 font-semibold text-primary' }}
                 className="mt-5 rounded-[1.5rem] bg-secondary/40"
               />
-              <div className="mt-5 rounded-[1.5rem] bg-primary/5 p-4">
-                <p className="text-sm font-semibold">Цель раздела</p>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  Календарный формат помогает лучше организовать время, не пропускать важные задачи и наглядно видеть нагрузку по дням.
-                </p>
-              </div>
             </motion.section>
 
             <motion.section
@@ -384,9 +372,6 @@ export default function Tasks() {
                   <h3 className="font-display text-2xl font-bold">
                     {format(selectedDate, 'd MMMM, EEEE', { locale: ru })}
                   </h3>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Здесь можно просматривать задачи, привычки и выполнение за выбранный день.
-                  </p>
                 </div>
                 <button
                   onClick={() => setShowCreate(true)}
@@ -411,7 +396,7 @@ export default function Tasks() {
 
               {tasksForSelectedDate.length === 0 ? (
                 <div className="mt-5 rounded-[1.5rem] bg-secondary/50 px-4 py-10 text-center text-sm text-muted-foreground">
-                  На этот день задач нет для выбранного режима просмотра.
+                  На этот день задач нет.
                 </div>
               ) : (
                 <div className="mt-5 space-y-4">
@@ -544,7 +529,6 @@ function EmptyTasksState({ onCreate }: { onCreate: () => void }) {
     <div className="rounded-[2rem] border bg-card px-6 py-14 text-center">
       <CalendarDays className="mx-auto h-10 w-10 text-muted-foreground/30" />
       <p className="mt-4 text-base font-medium">У вас пока нет задач</p>
-      <p className="mt-1 text-sm text-muted-foreground">Создайте первую задачу или привычку и выберите удобный формат планирования.</p>
       <button onClick={onCreate} className="mt-5 rounded-2xl bg-primary px-5 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90">
         Добавить
       </button>
