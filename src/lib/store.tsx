@@ -363,6 +363,19 @@ async function loadPairIdForUser(userId: string): Promise<string | null> {
   return data?.pair_id ?? null;
 }
 
+async function ensureOwnProfile(params: { userId: string; email: string; owner: Owner; pairId: string }) {
+  if (!supabase) return;
+
+  const { error } = await supabase.from('profiles').upsert({
+    id: params.userId,
+    email: params.email,
+    owner: params.owner,
+    pair_id: params.pairId,
+  });
+
+  if (error) throw error;
+}
+
 async function replaceSharedSnapshot(pairId: string, snapshot: SharedAppSnapshot) {
   if (!supabase) return;
 
@@ -689,6 +702,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       let pairId = SUPABASE_STATE_ROW_ID;
       const userId = data.session?.user?.id;
+      const email = data.session?.user?.email;
+      if (userId && email) {
+        try {
+          await ensureOwnProfile({
+            userId,
+            email,
+            owner,
+            pairId: SUPABASE_STATE_ROW_ID,
+          });
+        } catch {
+          // keep going with fallback pair id
+        }
+      }
       if (userId) {
         try {
           const profilePairId = await loadPairIdForUser(userId);
@@ -728,6 +754,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
       let pairId = SUPABASE_STATE_ROW_ID;
       const userId = session?.user?.id;
+      const email = session?.user?.email;
+      if (userId && email) {
+        try {
+          await ensureOwnProfile({
+            userId,
+            email,
+            owner,
+            pairId: SUPABASE_STATE_ROW_ID,
+          });
+        } catch {
+          // keep going with fallback pair id
+        }
+      }
       if (userId) {
         try {
           const profilePairId = await loadPairIdForUser(userId);
