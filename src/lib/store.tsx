@@ -715,7 +715,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      let pairId = SUPABASE_STATE_ROW_ID;
+      const pairId = SUPABASE_STATE_ROW_ID;
       const userId = data.session?.user?.id;
       const email = data.session?.user?.email;
       if (userId && email) {
@@ -730,24 +730,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           // keep going with fallback pair id
         }
       }
-      if (userId) {
-        try {
-          const profilePairId = await loadPairIdForUser(userId);
-          if (!mounted) return;
-          if (profilePairId) pairId = profilePairId;
-        } catch {
-          // keep env fallback
-        }
-      }
-      if (!pairId || pairId === SUPABASE_STATE_ROW_ID) {
-        try {
-          const discoveredPairId = await discoverAccessiblePairId();
-          if (!mounted) return;
-          if (discoveredPairId) pairId = discoveredPairId;
-        } catch {
-          // keep current fallback
-        }
-      }
+      if (!mounted) return;
 
       setActiveUser(owner);
       setIsAuthenticated(true);
@@ -776,7 +759,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setCurrentPairId(null);
         return;
       }
-      let pairId = SUPABASE_STATE_ROW_ID;
+      const pairId = SUPABASE_STATE_ROW_ID;
       const userId = session?.user?.id;
       const email = session?.user?.email;
       if (userId && email) {
@@ -789,22 +772,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           });
         } catch {
           // keep going with fallback pair id
-        }
-      }
-      if (userId) {
-        try {
-          const profilePairId = await loadPairIdForUser(userId);
-          if (profilePairId) pairId = profilePairId;
-        } catch {
-          // keep env fallback
-        }
-      }
-      if (!pairId || pairId === SUPABASE_STATE_ROW_ID) {
-        try {
-          const discoveredPairId = await discoverAccessiblePairId();
-          if (discoveredPairId) pairId = discoveredPairId;
-        } catch {
-          // keep current fallback
         }
       }
 
