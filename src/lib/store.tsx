@@ -612,18 +612,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     async (pairId: string) => {
       if (!supabase || !hasHydratedSharedRef.current) return;
 
-      const scheduledAtVersion = localChangeVersionRef.current;
-      const hasPendingLocalChanges = localChangeVersionRef.current !== lastSharedSyncVersionRef.current;
-      if (hasPendingLocalChanges) return;
-
       try {
         const remoteSnapshot = await withTimeout(loadSharedSnapshot(pairId), 'loadSharedSnapshot', READ_TIMEOUT_MS);
-        const localChangedSinceRefreshStarted = localChangeVersionRef.current !== scheduledAtVersion;
-        const stillHasPendingLocalChanges = localChangeVersionRef.current !== lastSharedSyncVersionRef.current;
-        if (localChangedSinceRefreshStarted || stillHasPendingLocalChanges) {
-          return;
-        }
-
         applyRemoteSnapshot(remoteSnapshot);
         setSyncStatus('online');
         setSyncError(null);
@@ -825,6 +815,36 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [currentPairId, isAuthenticated, refreshSharedSnapshot]);
 
   useEffect(() => {
+    if (!supabase || !isAuthenticated || !currentPairId || !hasHydratedSharedRef.current) return;
+
+    const refreshFromRealtime = () => {
+      void refreshSharedSnapshot(currentPairId);
+    };
+
+    const channel = supabase
+      .channel(`pair-updates-${currentPairId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'tasks', filter: `pair_id=eq.${currentPairId}` },
+        refreshFromRealtime
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'pair_settings', filter: `pair_id=eq.${currentPairId}` },
+        refreshFromRealtime
+      )
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          refreshFromRealtime();
+        }
+      });
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [currentPairId, isAuthenticated, refreshSharedSnapshot]);
+
+  useEffect(() => {
     if (!supabase || !isAuthenticated || !currentPairId) return;
     if (pendingTaskDeletesRef.current.size === 0) return;
 
@@ -944,6 +964,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           setSyncError(null);
         })
         .catch((error) => {
+          lastSharedSyncVersionRef.current = localChangeVersionRef.current;
           setSyncStatus('idle');
           setSyncError(null);
         });
@@ -985,6 +1006,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             setSyncError(null);
           })
           .catch((error) => {
+            lastSharedSyncVersionRef.current = localChangeVersionRef.current;
             setSyncStatus('idle');
             setSyncError(null);
           });
@@ -1035,6 +1057,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             setSyncError(null);
           })
           .catch((error) => {
+            lastSharedSyncVersionRef.current = localChangeVersionRef.current;
             setSyncStatus('idle');
             setSyncError(null);
           });
@@ -1066,6 +1089,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           setSyncError(null);
         })
         .catch((error) => {
+          lastSharedSyncVersionRef.current = localChangeVersionRef.current;
           setSyncStatus('idle');
           setSyncError(null);
         });
