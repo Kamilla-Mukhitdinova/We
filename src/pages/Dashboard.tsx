@@ -77,6 +77,7 @@ export default function Dashboard() {
     addDailyWish,
     toggleTaskForDate,
     customHadiths,
+    refreshSharedData,
   } = useApp();
   const [showWishDialog, setShowWishDialog] = useState(false);
   const [wishMessage, setWishMessage] = useState('');
@@ -113,6 +114,10 @@ export default function Dashboard() {
     });
     return Array.from(map.entries());
   }, [myTodayTasks]);
+
+  useEffect(() => {
+    void refreshSharedData();
+  }, [refreshSharedData]);
 
   useEffect(() => {
     let cancelled = false;

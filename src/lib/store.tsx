@@ -96,6 +96,7 @@ interface AppState {
   storageMode: StorageMode;
   syncStatus: SyncStatus;
   syncError: string | null;
+  refreshSharedData: () => Promise<void>;
   login: (user: Owner, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
   changePassword: (currentPassword: string, nextPassword: string) => Promise<{ ok: boolean; message: string }>;
@@ -629,6 +630,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     localChangeVersionRef.current += 1;
     markLocalMutationAt();
   }, []);
+
+  const refreshSharedData = useCallback(async () => {
+    if (!supabase || !isAuthenticated || !currentPairId) return;
+
+    if (hasHydratedSharedRef.current) {
+      await refreshSharedSnapshot(currentPairId);
+      return;
+    }
+
+    await hydrateSharedInBackground(currentPairId);
+  }, [currentPairId, hydrateSharedInBackground, isAuthenticated, refreshSharedSnapshot]);
 
   useEffect(() => {
     localStorage.setItem(LOCAL_KEYS.activeUser, JSON.stringify(activeUser));
@@ -1168,6 +1180,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         storageMode,
         syncStatus,
         syncError,
+        refreshSharedData,
         login,
         logout,
         changePassword,
