@@ -363,6 +363,21 @@ async function loadPairIdForUser(userId: string): Promise<string | null> {
   return data?.pair_id ?? null;
 }
 
+async function discoverAccessiblePairId(): Promise<string | null> {
+  if (!supabase) return null;
+
+  const settings = await supabase.from('pair_settings').select('pair_id').limit(1).maybeSingle<{ pair_id: string }>();
+  if (!settings.error && settings.data?.pair_id) return settings.data.pair_id;
+
+  const tasks = await supabase.from('tasks').select('pair_id').limit(1).maybeSingle<{ pair_id: string }>();
+  if (!tasks.error && tasks.data?.pair_id) return tasks.data.pair_id;
+
+  const wishes = await supabase.from('wishes').select('pair_id').limit(1).maybeSingle<{ pair_id: string }>();
+  if (!wishes.error && wishes.data?.pair_id) return wishes.data.pair_id;
+
+  return null;
+}
+
 async function ensureOwnProfile(params: { userId: string; email: string; owner: Owner; pairId: string }) {
   if (!supabase) return;
 
@@ -724,6 +739,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           // keep env fallback
         }
       }
+      if (!pairId || pairId === SUPABASE_STATE_ROW_ID) {
+        try {
+          const discoveredPairId = await discoverAccessiblePairId();
+          if (!mounted) return;
+          if (discoveredPairId) pairId = discoveredPairId;
+        } catch {
+          // keep current fallback
+        }
+      }
 
       setActiveUser(owner);
       setIsAuthenticated(true);
@@ -773,6 +797,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           if (profilePairId) pairId = profilePairId;
         } catch {
           // keep env fallback
+        }
+      }
+      if (!pairId || pairId === SUPABASE_STATE_ROW_ID) {
+        try {
+          const discoveredPairId = await discoverAccessiblePairId();
+          if (discoveredPairId) pairId = discoveredPairId;
+        } catch {
+          // keep current fallback
         }
       }
 
