@@ -45,9 +45,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <nav className="hidden sm:flex items-center gap-1">
               <NavTab to="/" label="Дэшборд" icon={<LayoutDashboard className="h-4 w-4" />} />
               <NavTab to="/tasks" label="Мои задачи" icon={<ListTodo className="h-4 w-4" />} />
-              <NavTab to="/home-life" label="Дом и день" icon={<House className="h-4 w-4" />} />
               <NavTab to="/wishes" label="Мечты" icon={<Heart className="h-4 w-4" />} />
               <NavTab to="/analytics" label="Аналитика" icon={<BarChart3 className="h-4 w-4" />} />
+              <NavTab to="/home-life" label="Notes" icon={<House className="h-4 w-4" />} />
             </nav>
           </div>
 
@@ -140,9 +140,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <div className="flex justify-around py-1.5">
           <MobileNavTab to="/" icon={<LayoutDashboard className="h-5 w-5" />} label="Дэшборд" />
           <MobileNavTab to="/tasks" icon={<ListTodo className="h-5 w-5" />} label="Мои" />
-          <MobileNavTab to="/home-life" icon={<House className="h-5 w-5" />} label="Дом" />
           <MobileNavTab to="/wishes" icon={<Heart className="h-5 w-5" />} label="Мечты" />
           <MobileNavTab to="/analytics" icon={<BarChart3 className="h-5 w-5" />} label="График" />
+          <MobileNavTab to="/home-life" icon={<House className="h-5 w-5" />} label="Notes" />
         </div>
       </nav>
 
