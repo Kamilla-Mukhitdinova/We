@@ -46,5 +46,23 @@ export interface DailyWishMessage {
   createdAt: string;
 }
 
+export interface HomePurchase {
+  id: string;
+  title: string;
+  notes?: string;
+  owner: Owner;
+  isRecurring: boolean;
+  status: 'todo' | 'done';
+  createdAt: string;
+}
+
+export interface DailyReflection {
+  id: string;
+  owner: Owner;
+  date: string; // yyyy-MM-dd
+  text: string;
+  updatedAt: string;
+}
+
 export type ViewFilter = 'all' | 'my' | 'partner';
 export type PeriodFilter = 'today' | 'week' | 'all';

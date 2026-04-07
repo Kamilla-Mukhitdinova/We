@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { DailyWishMessage, Owner, Task, Wish } from './types';
+import { DailyReflection, DailyWishMessage, HomePurchase, Owner, Task, Wish } from './types';
 import {
   DEFAULT_PASSWORDS,
   LOCAL_KEYS,
@@ -108,6 +108,8 @@ interface AppState {
   wishCategories: string[];
   dailyWishes: DailyWishMessage[];
   customHadiths: string[];
+  homePurchases: HomePurchase[];
+  dailyReflections: DailyReflection[];
   addTask: (task: Omit<Task, 'id' | 'createdAt'>) => void;
   updateTask: (id: string, updates: Partial<Task>) => void;
   toggleTaskForDate: (id: string, date: string) => void;
@@ -122,6 +124,11 @@ interface AppState {
   addDailyWish: (wish: Omit<DailyWishMessage, 'id' | 'createdAt'>) => void;
   addCustomHadith: (hadith: string) => void;
   deleteCustomHadith: (hadith: string) => void;
+  addHomePurchase: (input: Omit<HomePurchase, 'id' | 'createdAt' | 'owner' | 'status'>) => void;
+  toggleHomePurchase: (id: string) => void;
+  deleteHomePurchase: (id: string) => void;
+  upsertDailyReflection: (date: string, text: string) => void;
+  deleteDailyReflection: (id: string) => void;
 }
 
 const AppContext = createContext<AppState | null>(null);
@@ -523,6 +530,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [wishCategories, setWishCategories] = useState<string[]>(initialSnapshot.wishCategories);
   const [dailyWishes, setDailyWishes] = useState<DailyWishMessage[]>(initialSnapshot.dailyWishes);
   const [customHadiths, setCustomHadiths] = useState<string[]>(initialSnapshot.customHadiths);
+  const [homePurchases, setHomePurchases] = useState<HomePurchase[]>(() =>
+    loadFromStorage<HomePurchase[]>('twp-home-purchases', [])
+  );
+  const [dailyReflections, setDailyReflections] = useState<DailyReflection[]>(() =>
+    loadFromStorage<DailyReflection[]>('twp-daily-reflections', [])
+  );
   const [passwords, setPasswords] = useState<PasswordMap>(initialSnapshot.passwords);
   const [fontScale, setFontScale] = useState<'sm' | 'md' | 'lg'>(() =>
     loadFromStorage<'sm' | 'md' | 'lg'>(LOCAL_KEYS.fontScale, 'md')
@@ -686,6 +699,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     saveLocalSnapshot(snapshot);
   }, [snapshot]);
+
+  useEffect(() => {
+    localStorage.setItem('twp-home-purchases', JSON.stringify(homePurchases));
+  }, [homePurchases]);
+
+  useEffect(() => {
+    localStorage.setItem('twp-daily-reflections', JSON.stringify(dailyReflections));
+  }, [dailyReflections]);
 
   useEffect(() => {
     if (!supabase) {
@@ -1208,6 +1229,61 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setCustomHadiths((prev) => prev.filter((item) => item !== hadith));
   }, [markLocalChange]);
 
+  const addHomePurchase = useCallback((input: Omit<HomePurchase, 'id' | 'createdAt' | 'owner' | 'status'>) => {
+    const nextItem: HomePurchase = {
+      id: crypto.randomUUID(),
+      title: input.title.trim(),
+      notes: input.notes?.trim() || undefined,
+      isRecurring: input.isRecurring,
+      status: 'todo',
+      owner: activeUser,
+      createdAt: new Date().toISOString(),
+    };
+    setHomePurchases((prev) => [nextItem, ...prev]);
+  }, [activeUser]);
+
+  const toggleHomePurchase = useCallback((id: string) => {
+    setHomePurchases((prev) =>
+      prev.map((item) =>
+        item.id === id ? { ...item, status: item.status === 'done' ? 'todo' : 'done' } : item
+      )
+    );
+  }, []);
+
+  const deleteHomePurchase = useCallback((id: string) => {
+    setHomePurchases((prev) => prev.filter((item) => item.id !== id));
+  }, []);
+
+  const upsertDailyReflection = useCallback((date: string, text: string) => {
+    const cleanText = text.trim();
+    setDailyReflections((prev) => {
+      const existing = prev.find((item) => item.owner === activeUser && item.date === date);
+      if (!cleanText) {
+        if (!existing) return prev;
+        return prev.filter((item) => item.id !== existing.id);
+      }
+      if (!existing) {
+        return [
+          {
+            id: crypto.randomUUID(),
+            owner: activeUser,
+            date,
+            text: cleanText,
+            updatedAt: new Date().toISOString(),
+          },
+          ...prev,
+        ];
+      }
+      return prev.map((item) =>
+        item.id === existing.id ? { ...item, text: cleanText, updatedAt: new Date().toISOString() } : item
+      );
+    });
+  }, [activeUser]);
+
+  const deleteDailyReflection = useCallback((id: string) => {
+    setDailyReflections((prev) => prev.filter((item) => item.id !== id));
+  }, []);
+
   return (
     <AppContext.Provider
       value={{
@@ -1230,6 +1306,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         wishCategories,
         dailyWishes,
         customHadiths,
+        homePurchases,
+        dailyReflections,
         addTask,
         updateTask,
         toggleTaskForDate,
@@ -1244,6 +1322,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         addDailyWish,
         addCustomHadith,
         deleteCustomHadith,
+        addHomePurchase,
+        toggleHomePurchase,
+        deleteHomePurchase,
+        upsertDailyReflection,
+        deleteDailyReflection,
       }}
     >
       {children}
