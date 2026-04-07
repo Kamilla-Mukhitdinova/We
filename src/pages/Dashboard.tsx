@@ -38,6 +38,18 @@ function getPartner(owner: Owner): Owner {
   return owner === 'Kamilla' ? 'Doszhan' : 'Kamilla';
 }
 
+function ownerMatches(rawOwner: string | null | undefined, target: Owner) {
+  const owner = String(rawOwner ?? '').trim().toLowerCase();
+  if (!owner) return false;
+
+  const kamillaAliases = ['kamilla', 'камилла'];
+  const doszhanAliases = ['doszhan', 'досжан', 'досжан'];
+
+  return target === 'Kamilla'
+    ? kamillaAliases.some((alias) => owner.includes(alias))
+    : doszhanAliases.some((alias) => owner.includes(alias));
+}
+
 function buildOwnerStats(owner: Owner, taskCount: number, doneCount: number) {
   const percent = taskCount > 0 ? Math.round((doneCount / taskCount) * 100) : 0;
   return { owner, total: taskCount, done: doneCount, percent };
@@ -74,8 +86,8 @@ export default function Dashboard() {
   const todayDate = new Date();
   const todayKey = toDateKey(todayDate);
 
-  const kamillaTasks = tasks.filter((task) => task.owner === 'Kamilla');
-  const doszhanTasks = tasks.filter((task) => task.owner === 'Doszhan');
+  const kamillaTasks = tasks.filter((task) => ownerMatches(task.owner, 'Kamilla'));
+  const doszhanTasks = tasks.filter((task) => ownerMatches(task.owner, 'Doszhan'));
   const getDoneCountForOwner = (ownerTasks: typeof tasks) =>
     ownerTasks.filter((task) =>
       task.kind === 'habit' ? getTaskStatusForDate(task, todayDate) === 'done' : task.status === 'done'
@@ -87,7 +99,7 @@ export default function Dashboard() {
   const stats = [statsByOwner[activeUser], statsByOwner[partner]];
 
   const myTodayTasks = useMemo(
-    () => tasks.filter((task) => task.owner === activeUser && isTaskForDate(task, todayDate)),
+    () => tasks.filter((task) => ownerMatches(task.owner, activeUser) && isTaskForDate(task, todayDate)),
     [activeUser, tasks, todayDate]
   );
 
