@@ -70,7 +70,7 @@ export default function Wishes() {
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'mine' | 'couple' | 'achieved')} className="space-y-4">
         <TabsList className="h-auto rounded-[1.5rem] bg-secondary/70 p-1">
           <TabsTrigger value="mine" className="rounded-[1.2rem] px-4 py-2">Мои мечты</TabsTrigger>
-          <TabsTrigger value="couple" className="rounded-[1.2rem] px-4 py-2">Общие мечты</TabsTrigger>
+          <TabsTrigger value="couple" className="rounded-[1.2rem] px-4 py-2">Цели</TabsTrigger>
           <TabsTrigger value="achieved" className="rounded-[1.2rem] px-4 py-2">
             <span>Достигнутые</span>
             <span className="ml-2 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-semibold text-white">
@@ -92,7 +92,7 @@ export default function Wishes() {
 
         <TabsContent value="couple">
           <WishSection
-            title="Общие цели"
+            title=""
             subtitle="То, что вы хотите прожить, увидеть и построить вместе."
             emptyTitle="У пары пока нет общих мечт"
             wishes={coupleWishes}
