@@ -11,7 +11,7 @@ import {
   Sparkles,
   SunMedium,
 } from 'lucide-react';
-import coupleImg from '@/assets/dashboard-couple-romantic-v2.png';
+import coupleImg from '@/assets/dashboard-serenity-garden.png';
 import { useApp } from '@/lib/store';
 import { getTaskStatusForDate, isTaskForDate, toDateKey } from '@/lib/task-helpers';
 import { Owner } from '@/lib/types';
@@ -161,10 +161,10 @@ export default function Dashboard() {
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-background/85 px-4 py-2 text-xs font-medium text-primary shadow-sm backdrop-blur">
               <Sparkles className="h-4 w-4" />
-              Наш Дэшборд 
+              Дэшборд
             </div>
             <h2 className="mt-4 max-w-3xl font-display text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-              Пусть все строится из мягкости, верности, красивых намерений и маленьких дел, сделанных ради Аллаха.
+              Воистину, Аллах не меняет положения людей, пока они не изменят самих себя. Начни с себя — и Аллах откроет путь к лучшему.
             </h2>
           </div>
           <div className="relative hidden lg:flex justify-center">

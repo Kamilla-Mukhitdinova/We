@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { DailyReflection, DailyWishMessage, HomePurchase, Owner, Task, Wish } from './types';
+import { DailyReflection, DailyWishMessage, HomePurchase, Owner, RecipeEntry, Task, Wish } from './types';
 import {
   DEFAULT_PASSWORDS,
   LOCAL_KEYS,
@@ -111,6 +111,7 @@ interface AppState {
   customHadiths: string[];
   homePurchases: HomePurchase[];
   dailyReflections: DailyReflection[];
+  recipeEntries: RecipeEntry[];
   addTask: (task: Omit<Task, 'id' | 'createdAt'>) => void;
   updateTask: (id: string, updates: Partial<Task>) => void;
   toggleTaskForDate: (id: string, date: string) => void;
@@ -130,6 +131,8 @@ interface AppState {
   deleteHomePurchase: (id: string) => void;
   upsertDailyReflection: (date: string, text: string) => void;
   deleteDailyReflection: (id: string) => void;
+  addRecipeEntry: (input: Omit<RecipeEntry, 'id' | 'createdAt' | 'owner'>) => void;
+  deleteRecipeEntry: (id: string) => void;
 }
 
 const AppContext = createContext<AppState | null>(null);
@@ -540,6 +543,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [dailyReflections, setDailyReflections] = useState<DailyReflection[]>(() =>
     loadFromStorage<DailyReflection[]>('twp-daily-reflections', [])
   );
+  const [recipeEntries, setRecipeEntries] = useState<RecipeEntry[]>(() =>
+    loadFromStorage<RecipeEntry[]>('twp-recipe-entries', [])
+  );
   const [passwords, setPasswords] = useState<PasswordMap>(initialSnapshot.passwords);
   const [fontScale, setFontScale] = useState<'sm' | 'md' | 'lg'>(() =>
     loadFromStorage<'sm' | 'md' | 'lg'>(LOCAL_KEYS.fontScale, 'md')
@@ -711,6 +717,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     localStorage.setItem('twp-daily-reflections', JSON.stringify(dailyReflections));
   }, [dailyReflections]);
+
+  useEffect(() => {
+    localStorage.setItem('twp-recipe-entries', JSON.stringify(recipeEntries));
+  }, [recipeEntries]);
 
   useEffect(() => {
     if (!supabase) {
@@ -1290,6 +1300,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setDailyReflections((prev) => prev.filter((item) => item.id !== id));
   }, []);
 
+  const addRecipeEntry = useCallback((input: Omit<RecipeEntry, 'id' | 'createdAt' | 'owner'>) => {
+    const nextEntry: RecipeEntry = {
+      id: crypto.randomUUID(),
+      owner: activeUser,
+      title: input.title.trim(),
+      recipe: input.recipe.trim(),
+      imageUrl: input.imageUrl,
+      createdAt: new Date().toISOString(),
+    };
+    setRecipeEntries((prev) => [nextEntry, ...prev]);
+  }, [activeUser]);
+
+  const deleteRecipeEntry = useCallback((id: string) => {
+    setRecipeEntries((prev) => prev.filter((item) => item.id !== id));
+  }, []);
+
   return (
     <AppContext.Provider
       value={{
@@ -1314,6 +1340,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         customHadiths,
         homePurchases,
         dailyReflections,
+        recipeEntries,
         addTask,
         updateTask,
         toggleTaskForDate,
@@ -1333,6 +1360,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         deleteHomePurchase,
         upsertDailyReflection,
         deleteDailyReflection,
+        addRecipeEntry,
+        deleteRecipeEntry,
       }}
     >
       {children}

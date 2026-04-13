@@ -65,5 +65,14 @@ export interface DailyReflection {
   updatedAt: string;
 }
 
+export interface RecipeEntry {
+  id: string;
+  owner: Owner;
+  title: string;
+  recipe: string;
+  imageUrl?: string;
+  createdAt: string;
+}
+
 export type ViewFilter = 'all' | 'my' | 'partner';
 export type PeriodFilter = 'today' | 'week' | 'all';

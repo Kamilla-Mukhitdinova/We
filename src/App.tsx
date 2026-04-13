@@ -12,6 +12,7 @@ import Tasks from "@/pages/Tasks";
 import Wishes from "@/pages/Wishes";
 import Analytics from "@/pages/Analytics";
 import HomeLife from "@/pages/HomeLife";
+import MenuBook from "@/pages/MenuBook";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,6 +32,7 @@ const App = () => (
                   <Route path="/tasks" element={<Tasks />} />
                   <Route path="/wishes" element={<Wishes />} />
                   <Route path="/home-life" element={<HomeLife />} />
+                  <Route path="/menu-book" element={<MenuBook />} />
                   <Route path="/analytics" element={<Analytics />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>

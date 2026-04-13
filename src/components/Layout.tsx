@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useApp } from '@/lib/store';
 import { useTheme } from '@/hooks/use-theme';
-import { LayoutDashboard, ListTodo, Heart, Plus, LogOut, KeyRound, Sun, Moon, BarChart3, Type, House } from 'lucide-react';
+import { LayoutDashboard, ListTodo, Heart, Plus, LogOut, KeyRound, Sun, Moon, BarChart3, Type, House, UtensilsCrossed } from 'lucide-react';
 import { CreateTaskDialog } from '@/components/CreateTaskDialog';
 import { CreateWishDialog } from '@/components/CreateWishDialog';
 import { ChangePasswordDialog } from '@/components/ChangePasswordDialog';
@@ -46,6 +46,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <NavTab to="/" label="Дэшборд" icon={<LayoutDashboard className="h-4 w-4" />} />
               <NavTab to="/tasks" label="Мои задачи" icon={<ListTodo className="h-4 w-4" />} />
               <NavTab to="/wishes" label="Мечты" icon={<Heart className="h-4 w-4" />} />
+              <NavTab to="/menu-book" label="Меню" icon={<UtensilsCrossed className="h-4 w-4" />} />
               <NavTab to="/analytics" label="Аналитика" icon={<BarChart3 className="h-4 w-4" />} />
               <NavTab to="/home-life" label="Notes" icon={<House className="h-4 w-4" />} />
             </nav>
@@ -141,6 +142,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <MobileNavTab to="/" icon={<LayoutDashboard className="h-5 w-5" />} label="Дэшборд" />
           <MobileNavTab to="/tasks" icon={<ListTodo className="h-5 w-5" />} label="Мои" />
           <MobileNavTab to="/wishes" icon={<Heart className="h-5 w-5" />} label="Мечты" />
+          <MobileNavTab to="/menu-book" icon={<UtensilsCrossed className="h-5 w-5" />} label="Меню" />
           <MobileNavTab to="/analytics" icon={<BarChart3 className="h-5 w-5" />} label="График" />
           <MobileNavTab to="/home-life" icon={<House className="h-5 w-5" />} label="Notes" />
         </div>
