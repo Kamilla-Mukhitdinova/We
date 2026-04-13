@@ -54,7 +54,7 @@ export default function Wishes() {
               onClick={() => setShowCoupleWishDialog(true)}
               className="rounded-2xl border px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
             >
-              Добавить мечту пары
+              Добавить цель
             </button>
             <button
               onClick={() => setShowMyWishDialog(true)}
