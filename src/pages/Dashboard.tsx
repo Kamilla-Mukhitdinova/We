@@ -7,22 +7,17 @@ import {
   BookOpenText,
   BriefcaseBusiness,
   CheckCircle2,
-  HeartHandshake,
   Home,
   Landmark,
   Percent,
-  Send,
   Sparkles,
   SunMedium,
   Target,
 } from 'lucide-react';
-import { toast } from 'sonner';
 import coupleImg from '@/assets/dashboard-couple-romantic-v2.png';
 import { useApp } from '@/lib/store';
 import { getTaskStatusForDate, isTaskForDate, toDateKey } from '@/lib/task-helpers';
 import { Owner } from '@/lib/types';
-import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const DEFAULT_HADITHS = [
   'Лучший из вас тот, кто лучше всего относится к своей семье.',
@@ -36,6 +31,10 @@ const DEFAULT_HADITHS = [
 
 function getPartner(owner: Owner): Owner {
   return owner === 'Kamilla' ? 'Doszhan' : 'Kamilla';
+}
+
+function getOwnerLabel(owner: Owner, activeUser: Owner) {
+  return owner === activeUser ? 'Я' : 'Он';
 }
 
 function ownerMatches(rawOwner: string | null | undefined, target: Owner) {
@@ -73,14 +72,10 @@ export default function Dashboard() {
   const {
     activeUser,
     tasks,
-    dailyWishes,
-    addDailyWish,
     toggleTaskForDate,
     customHadiths,
     refreshSharedData,
   } = useApp();
-  const [showWishDialog, setShowWishDialog] = useState(false);
-  const [wishMessage, setWishMessage] = useState('');
   const [dailyHadith, setDailyHadith] = useState('');
   const [isHadithExpanded, setIsHadithExpanded] = useState(false);
   const partner = getPartner(activeUser);
@@ -179,30 +174,6 @@ export default function Dashboard() {
     setIsHadithExpanded(false);
   }, [dailyHadith]);
 
-  const wishForMe = dailyWishes
-    .filter((wish) => wish.to === activeUser && wish.date === todayKey)
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
-  const myWishToPartner = dailyWishes
-    .filter((wish) => wish.from === activeUser && wish.date === todayKey)
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
-
-  const handleSendWish = () => {
-    if (!wishMessage.trim()) {
-      toast.message('Напишите пожелание');
-      return;
-    }
-
-    addDailyWish({
-      from: activeUser,
-      to: partner,
-      message: wishMessage.trim(),
-      date: todayKey,
-    });
-    setWishMessage('');
-    setShowWishDialog(false);
-    toast.success('Пожелание отправлено');
-  };
-
   const isLongHadith = dailyHadith.length > 180;
   const hadithPreview = isLongHadith ? `${dailyHadith.slice(0, 180).trim()}...` : dailyHadith;
 
@@ -246,7 +217,7 @@ export default function Dashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Статистика пары</p>
-                <h3 className="mt-1 font-display text-2xl font-bold">{stat.owner}</h3>
+                <h3 className="mt-1 font-display text-2xl font-bold">{getOwnerLabel(stat.owner, activeUser)}</h3>
               </div>
               <div className="rounded-2xl bg-background px-3 py-2 text-xs font-medium text-primary shadow-sm">
                 {stat.owner === activeUser ? 'Вы сейчас здесь' : 'Ваш партнёр'}
@@ -413,62 +384,8 @@ export default function Dashboard() {
               </button>
             )}
           </motion.article>
-
-          <motion.article
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="rounded-[1.9rem] border bg-card p-6"
-          >
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h3 className="font-display text-2xl font-bold">Пожелание партнёру</h3>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {myWishToPartner ? 'Сегодня вы уже отправили тёплые слова' : `Можно написать для ${partner}`}
-                </p>
-              </div>
-              <HeartHandshake className="h-5 w-5 text-primary" />
-            </div>
-
-            <div className="mt-5 rounded-[1.4rem] bg-secondary/35 p-4">
-              <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Для вас сегодня</p>
-              <p className="mt-3 text-sm leading-7 text-foreground/80">
-                {wishForMe?.message ?? 'Пока нет пожелания на сегодня, но вы можете начать эту тёплую традицию уже сейчас.'}
-              </p>
-            </div>
-
-            <button
-              onClick={() => setShowWishDialog(true)}
-              className="mt-4 flex items-center gap-2 rounded-2xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
-            >
-              <Send className="h-4 w-4" />
-              {myWishToPartner ? 'Написать ещё' : 'Написать пожелание'}
-            </button>
-          </motion.article>
         </div>
       </section>
-
-      <Dialog open={showWishDialog} onOpenChange={setShowWishDialog}>
-        <DialogContent className="sm:max-w-md rounded-[1.8rem]">
-          <DialogHeader>
-            <DialogTitle className="font-display text-2xl">Пожелание для {partner}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <Textarea
-              rows={4}
-              value={wishMessage}
-              onChange={(event) => setWishMessage(event.target.value)}
-              placeholder={`Напишите тёплые слова для ${partner}...`}
-            />
-            <button
-              onClick={handleSendWish}
-              className="w-full rounded-2xl bg-primary px-5 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
-            >
-              Отправить
-            </button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
