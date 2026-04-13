@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
@@ -9,10 +8,8 @@ import {
   CheckCircle2,
   Home,
   Landmark,
-  Percent,
   Sparkles,
   SunMedium,
-  Target,
 } from 'lucide-react';
 import coupleImg from '@/assets/dashboard-couple-romantic-v2.png';
 import { useApp } from '@/lib/store';
@@ -41,11 +38,6 @@ function ownerMatches(rawOwner: string | null | undefined, target: Owner) {
     : doszhanAliases.some((alias) => owner.includes(alias));
 }
 
-function buildOwnerStats(owner: Owner, taskCount: number, doneCount: number) {
-  const percent = taskCount > 0 ? Math.round((doneCount / taskCount) * 100) : 0;
-  return { owner, total: taskCount, done: doneCount, percent };
-}
-
 function getDailyIndex(length: number) {
   const now = new Date();
   const day = now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate();
@@ -72,12 +64,6 @@ export default function Dashboard() {
   const [isHadithExpanded, setIsHadithExpanded] = useState(false);
   const todayDate = new Date();
   const todayKey = toDateKey(todayDate);
-
-  const myTasks = tasks.filter((task) => ownerMatches(task.owner, activeUser));
-  const todayDoneOverall = myTasks.filter((task) =>
-      task.kind === 'habit' ? getTaskStatusForDate(task, todayDate) === 'done' : task.status === 'done'
-    ).length;
-  const stats = [buildOwnerStats(activeUser, myTasks.length, todayDoneOverall)];
 
   const myTodayTasks = useMemo(
     () => tasks.filter((task) => ownerMatches(task.owner, activeUser) && isTaskForDate(task, todayDate)),
@@ -187,57 +173,6 @@ export default function Dashboard() {
           </div>
         </div>
       </motion.section>
-
-      <section className="grid gap-4 lg:grid-cols-2">
-        {stats.map((stat, index) => (
-          <motion.article
-            key={stat.owner}
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.08 }}
-            className={`rounded-[1.9rem] border p-6 shadow-sm ${
-              stat.owner === activeUser ? 'border-primary/30 bg-primary/5' : 'bg-card'
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Статистика пары</p>
-                <h3 className="mt-1 font-display text-2xl font-bold">Я</h3>
-              </div>
-              <div className="rounded-2xl bg-background px-3 py-2 text-xs font-medium text-primary shadow-sm">
-                Только ваш прогресс
-              </div>
-            </div>
-            <p className="mt-3 text-xs text-muted-foreground">Все задачи и привычки</p>
-            <div className="mt-6 grid gap-3 sm:grid-cols-3">
-              <StatMiniCard icon={<Target className="h-4 w-4" />} label="Поставлено" value={stat.total} />
-              <StatMiniCard icon={<CheckCircle2 className="h-4 w-4" />} label="Выполнено" value={stat.done} />
-              <StatMiniCard icon={<Percent className="h-4 w-4" />} label="Процент" value={`${stat.percent}%`} />
-            </div>
-            <div className="mt-5 rounded-[1.4rem] bg-background/80 px-4 py-4">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Общий прогресс</p>
-                  <p className="mt-1 text-sm font-medium text-foreground/80">
-                    {stat.done} из {stat.total || 0} выполнено
-                  </p>
-                </div>
-                <span className="rounded-full bg-background px-3 py-1 text-xs font-semibold text-primary shadow-sm">
-                  {stat.percent}%
-                </span>
-              </div>
-              <div className="mt-3 h-3 overflow-hidden rounded-full bg-secondary">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${stat.percent}%` }}
-                  transition={{ duration: 0.5, delay: 0.1 + index * 0.1 }}
-                  className="h-full rounded-full bg-primary"
-                />
-              </div>
-            </div>
-          </motion.article>
-        ))}
-      </section>
 
       <section className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
         <motion.article
@@ -371,18 +306,6 @@ export default function Dashboard() {
           </motion.article>
         </div>
       </section>
-    </div>
-  );
-}
-
-function StatMiniCard({ icon, label, value }: { icon: ReactNode; label: string; value: string | number }) {
-  return (
-    <div className="rounded-[1.4rem] bg-background/90 p-4 shadow-sm">
-      <div className="flex items-center gap-2 text-muted-foreground">
-        {icon}
-        <span className="text-xs font-medium">{label}</span>
-      </div>
-      <p className="mt-3 font-display text-3xl font-bold">{value}</p>
     </div>
   );
 }
