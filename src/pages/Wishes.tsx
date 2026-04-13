@@ -94,7 +94,7 @@ export default function Wishes() {
           <WishSection
             title=""
             subtitle="То, что вы хотите прожить, увидеть и построить вместе."
-            emptyTitle="У пары пока нет общих мечт"
+            emptyTitle="У  пока нет общих мечт"
             wishes={coupleWishes}
             onToggleAchieved={(id, achieved) => updateWish(id, { status: achieved ? 'planned' : 'achieved' })}
             onDelete={deleteWish}
@@ -144,7 +144,7 @@ export default function Wishes() {
       <CreateWishDialog
         open={showCoupleWishDialog}
         onClose={() => setShowCoupleWishDialog(false)}
-        dialogTitle="Новая мечта пары"
+        dialogTitle="Новая мечта "
         scopeOverride="couple"
       />
       <ManageCategoriesDialog open={showWishCategories} onClose={() => setShowWishCategories(false)} type="wish" />

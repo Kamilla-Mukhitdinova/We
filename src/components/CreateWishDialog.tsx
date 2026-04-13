@@ -84,7 +84,7 @@ export function CreateWishDialog({
               <div className="mt-2 grid grid-cols-2 gap-2">
                 {[
                   { value: 'personal', label: 'Моя мечта' },
-                  { value: 'couple', label: 'Мечта пары' },
+                  { value: 'couple', label: 'Мечта ' },
                 ].map((option) => (
                   <button
                     key={option.value}

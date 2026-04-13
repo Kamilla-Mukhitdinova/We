@@ -66,7 +66,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
             <div className="mt-8 grid gap-4 sm:grid-cols-3">
               <div className="rounded-2xl bg-secondary/60 p-4">
                 <p className="text-sm font-semibold">Поставлено задач</p>
-                <p className="mt-2 text-xs text-muted-foreground">Общий объём задач вашей пары</p>
+                <p className="mt-2 text-xs text-muted-foreground">Общий объём задач</p>
               </div>
               <div className="rounded-2xl bg-secondary/60 p-4">
                 <p className="text-sm font-semibold">Выполнено</p>
