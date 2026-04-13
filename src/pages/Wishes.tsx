@@ -2,31 +2,21 @@ import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { CheckCircle2, Heart, Plus, Settings, Sparkles, Trash2 } from 'lucide-react';
 import { useApp } from '@/lib/store';
-import { Owner, Wish } from '@/lib/types';
+import { Wish } from '@/lib/types';
 import { CreateWishDialog } from '@/components/CreateWishDialog';
 import { ManageCategoriesDialog } from '@/components/ManageCategoriesDialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-function getPartner(owner: Owner): Owner {
-  return owner === 'Kamilla' ? 'Doszhan' : 'Kamilla';
-}
-
 export default function Wishes() {
   const { activeUser, wishes, updateWish, deleteWish } = useApp();
-  const [activeTab, setActiveTab] = useState<'mine' | 'partner' | 'couple' | 'achieved'>('mine');
+  const [activeTab, setActiveTab] = useState<'mine' | 'couple' | 'achieved'>('mine');
   const [showMyWishDialog, setShowMyWishDialog] = useState(false);
   const [showCoupleWishDialog, setShowCoupleWishDialog] = useState(false);
   const [showWishCategories, setShowWishCategories] = useState(false);
-  const partner = getPartner(activeUser);
 
   const myWishes = useMemo(
     () => wishes.filter((wish) => wish.scope === 'personal' && wish.owner === activeUser && wish.status !== 'achieved'),
     [activeUser, wishes]
-  );
-
-  const partnerWishes = useMemo(
-    () => wishes.filter((wish) => wish.scope === 'personal' && wish.owner === partner && wish.status !== 'achieved'),
-    [partner, wishes]
   );
 
   const coupleWishes = useMemo(
@@ -77,10 +67,9 @@ export default function Wishes() {
         </div>
       </motion.section>
 
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'mine' | 'partner' | 'couple' | 'achieved')} className="space-y-4">
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'mine' | 'couple' | 'achieved')} className="space-y-4">
         <TabsList className="h-auto rounded-[1.5rem] bg-secondary/70 p-1">
           <TabsTrigger value="mine" className="rounded-[1.2rem] px-4 py-2">Мои мечты</TabsTrigger>
-          <TabsTrigger value="partner" className="rounded-[1.2rem] px-4 py-2">{partner}</TabsTrigger>
           <TabsTrigger value="couple" className="rounded-[1.2rem] px-4 py-2">Общие мечты</TabsTrigger>
           <TabsTrigger value="achieved" className="rounded-[1.2rem] px-4 py-2">
             <span>Достигнутые</span>
@@ -96,17 +85,6 @@ export default function Wishes() {
             subtitle="Ваши личные мечты и цели."
             emptyTitle="У вас пока нет личных мечт"
             wishes={myWishes}
-            onToggleAchieved={(id, achieved) => updateWish(id, { status: achieved ? 'planned' : 'achieved' })}
-            onDelete={deleteWish}
-          />
-        </TabsContent>
-
-        <TabsContent value="partner">
-          <WishSection
-            title={`Личные мечты ${partner}`}
-            subtitle="Можно смотреть, что вдохновляет вашего партнёра."
-            emptyTitle={`У ${partner} пока нет личных мечт`}
-            wishes={partnerWishes}
             onToggleAchieved={(id, achieved) => updateWish(id, { status: achieved ? 'planned' : 'achieved' })}
             onDelete={deleteWish}
           />

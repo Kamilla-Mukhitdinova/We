@@ -22,8 +22,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const [showCreateWish, setShowCreateWish] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
 
-  const avatarInitial = activeUser === 'Kamilla' ? 'К' : 'Д';
-  const avatarBg = activeUser === 'Kamilla' ? 'bg-kamilla' : 'bg-doszhan';
+  const avatarInitial = 'К';
+  const avatarBg = 'bg-kamilla';
   const isSupabaseConnected = storageMode === 'shared' && syncStatus !== 'error';
 
   return (

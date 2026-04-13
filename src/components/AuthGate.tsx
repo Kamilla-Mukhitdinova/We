@@ -1,25 +1,13 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { HeartHandshake, LockKeyhole, ShieldCheck } from 'lucide-react';
-import { Owner } from '@/lib/types';
 import { useApp } from '@/lib/store';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 
-const OWNER_OPTIONS: { value: Owner; label: string; hint: string }[] = [
-  { value: 'Kamilla', label: 'Kamilla', hint: 'Личный вход Камиллы' },
-  { value: 'Doszhan', label: 'Doszhan', hint: 'Личный вход Досжана' },
-];
-
 export default function AuthGate({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isBootstrapping, storageMode, syncStatus, login } = useApp();
-  const [selectedOwner, setSelectedOwner] = useState<Owner>('Kamilla');
   const [password, setPassword] = useState('');
   const isSupabaseConnected = storageMode === 'shared' && syncStatus !== 'error';
-
-  const helperText = useMemo(
-    () => OWNER_OPTIONS.find((option) => option.value === selectedOwner)?.hint ?? '',
-    [selectedOwner]
-  );
 
   const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -34,7 +22,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const ok = await login(selectedOwner, password.trim());
+    const ok = await login('Kamilla', password.trim());
     if (!ok) {
       toast.message(isBootstrapping ? 'Подождите завершения подключения' : 'Не удалось войти');
       return;
@@ -98,28 +86,15 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
               </div>
               <div>
                 <h2 className="font-display text-2xl font-bold">Авторизация</h2>
-                <p className="text-xs text-muted-foreground">{helperText}</p>
+                <p className="text-xs text-muted-foreground">Личный вход Камиллы</p>
               </div>
             </div>
 
             <form onSubmit={handleLogin} className="space-y-5">
               <div className="grid gap-2">
-                <span className="text-sm font-medium">Кто входит</span>
-                <div className="grid grid-cols-2 gap-2">
-                  {OWNER_OPTIONS.map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => setSelectedOwner(option.value)}
-                      className={`rounded-2xl border px-4 py-3 text-sm font-medium transition-colors ${
-                        selectedOwner === option.value
-                          ? 'border-primary bg-primary/10 text-primary'
-                          : 'text-muted-foreground hover:bg-secondary'
-                      }`}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
+                <span className="text-sm font-medium">Аккаунт</span>
+                <div className="rounded-2xl border border-primary bg-primary/10 px-4 py-3 text-sm font-medium text-primary">
+                  Kamilla
                 </div>
               </div>
 

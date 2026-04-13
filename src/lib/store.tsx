@@ -21,6 +21,7 @@ type StorageMode = 'local' | 'shared';
 const READ_TIMEOUT_MS = 45000;
 const WRITE_TIMEOUT_MS = 45000;
 const REMOTE_REFRESH_INTERVAL_MS = 30000;
+const PRIMARY_OWNER: Owner = 'Kamilla';
 
 interface PairSettingsRow {
   pair_id: string;
@@ -520,7 +521,10 @@ async function touchPairSettings(pairId: string) {
 }
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [activeUser, setActiveUser] = useState<Owner>(() => loadFromStorage<Owner>(LOCAL_KEYS.activeUser, 'Kamilla'));
+  const [activeUser, setActiveUser] = useState<Owner>(() => {
+    const savedUser = loadFromStorage<Owner>(LOCAL_KEYS.activeUser, PRIMARY_OWNER);
+    return savedUser === PRIMARY_OWNER ? savedUser : PRIMARY_OWNER;
+  });
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() =>
     loadFromStorage<boolean>(LOCAL_KEYS.isAuthenticated, false)
   );
@@ -934,6 +938,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const login = useCallback(
     async (user: Owner, password: string) => {
       if (isBootstrapping) return false;
+      if (user !== PRIMARY_OWNER) return false;
 
       if (supabase) {
         const email = ownerEmailMap[user];

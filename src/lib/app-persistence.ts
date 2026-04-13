@@ -1,6 +1,11 @@
 import { DailyWishMessage, Owner, Task, Wish } from './types';
 
 export type PasswordMap = Record<Owner, string>;
+const PRIMARY_OWNER: Owner = 'Kamilla';
+
+function isPrimaryOwner(owner: Owner | string | null | undefined) {
+  return owner === PRIMARY_OWNER;
+}
 
 export interface SharedAppSnapshot {
   tasks: Task[];
@@ -34,7 +39,7 @@ export const LOCAL_KEYS = {
 
 export const DEFAULT_PASSWORDS: PasswordMap = {
   Kamilla: 'kamilla123',
-  Doszhan: 'doszhan123',
+  Doszhan: '',
 };
 
 const DEFAULT_SNAPSHOT: SharedAppSnapshot = {
@@ -75,15 +80,19 @@ function normalizeWish(wish: Wish): Wish {
 
 export function normalizeSharedSnapshot(snapshot?: Partial<SharedAppSnapshot> | null): SharedAppSnapshot {
   return {
-    tasks: (snapshot?.tasks ?? DEFAULT_SNAPSHOT.tasks).map(normalizeTask),
-    wishes: (snapshot?.wishes ?? DEFAULT_SNAPSHOT.wishes).map(normalizeWish),
+    tasks: (snapshot?.tasks ?? DEFAULT_SNAPSHOT.tasks)
+      .filter((task) => isPrimaryOwner(task.owner))
+      .map(normalizeTask),
+    wishes: (snapshot?.wishes ?? DEFAULT_SNAPSHOT.wishes)
+      .filter((wish) => wish.scope === 'couple' || isPrimaryOwner(wish.owner))
+      .map(normalizeWish),
     categories: snapshot?.categories?.length ? snapshot.categories : DEFAULT_SNAPSHOT.categories,
     wishCategories: snapshot?.wishCategories?.length ? snapshot.wishCategories : DEFAULT_SNAPSHOT.wishCategories,
-    dailyWishes: snapshot?.dailyWishes ?? DEFAULT_SNAPSHOT.dailyWishes,
+    dailyWishes: [],
     customHadiths: snapshot?.customHadiths ?? DEFAULT_SNAPSHOT.customHadiths,
     passwords: {
       ...DEFAULT_PASSWORDS,
-      ...(snapshot?.passwords ?? {}),
+      Kamilla: snapshot?.passwords?.Kamilla ?? DEFAULT_PASSWORDS.Kamilla,
     },
   };
 }

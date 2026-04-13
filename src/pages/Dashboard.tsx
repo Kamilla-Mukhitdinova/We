@@ -29,14 +29,6 @@ const DEFAULT_HADITHS = [
   'Тот, кто благодарит людей, благодарит и Аллаха.',
 ];
 
-function getPartner(owner: Owner): Owner {
-  return owner === 'Kamilla' ? 'Doszhan' : 'Kamilla';
-}
-
-function getOwnerLabel(owner: Owner, activeUser: Owner) {
-  return owner === activeUser ? 'Я' : 'Он';
-}
-
 function ownerMatches(rawOwner: string | null | undefined, target: Owner) {
   const owner = String(rawOwner ?? '').trim().toLowerCase();
   if (!owner) return false;
@@ -78,21 +70,14 @@ export default function Dashboard() {
   } = useApp();
   const [dailyHadith, setDailyHadith] = useState('');
   const [isHadithExpanded, setIsHadithExpanded] = useState(false);
-  const partner = getPartner(activeUser);
   const todayDate = new Date();
   const todayKey = toDateKey(todayDate);
 
-  const kamillaTasks = tasks.filter((task) => ownerMatches(task.owner, 'Kamilla'));
-  const doszhanTasks = tasks.filter((task) => ownerMatches(task.owner, 'Doszhan'));
-  const getDoneCountForOwner = (ownerTasks: typeof tasks) =>
-    ownerTasks.filter((task) =>
+  const myTasks = tasks.filter((task) => ownerMatches(task.owner, activeUser));
+  const todayDoneOverall = myTasks.filter((task) =>
       task.kind === 'habit' ? getTaskStatusForDate(task, todayDate) === 'done' : task.status === 'done'
     ).length;
-  const statsByOwner = {
-    Kamilla: buildOwnerStats('Kamilla', kamillaTasks.length, getDoneCountForOwner(kamillaTasks)),
-    Doszhan: buildOwnerStats('Doszhan', doszhanTasks.length, getDoneCountForOwner(doszhanTasks)),
-  };
-  const stats = [statsByOwner[activeUser], statsByOwner[partner]];
+  const stats = [buildOwnerStats(activeUser, myTasks.length, todayDoneOverall)];
 
   const myTodayTasks = useMemo(
     () => tasks.filter((task) => ownerMatches(task.owner, activeUser) && isTaskForDate(task, todayDate)),
@@ -217,10 +202,10 @@ export default function Dashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Статистика пары</p>
-                <h3 className="mt-1 font-display text-2xl font-bold">{getOwnerLabel(stat.owner, activeUser)}</h3>
+                <h3 className="mt-1 font-display text-2xl font-bold">Я</h3>
               </div>
               <div className="rounded-2xl bg-background px-3 py-2 text-xs font-medium text-primary shadow-sm">
-                {stat.owner === activeUser ? 'Вы сейчас здесь' : 'Ваш партнёр'}
+                Только ваш прогресс
               </div>
             </div>
             <p className="mt-3 text-xs text-muted-foreground">Все задачи и привычки</p>
