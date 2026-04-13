@@ -92,7 +92,7 @@ export default function Wishes() {
 
         <TabsContent value="couple">
           <WishSection
-            title="Общие мечты пары"
+            title="Общие цели"
             subtitle="То, что вы хотите прожить, увидеть и построить вместе."
             emptyTitle="У пары пока нет общих мечт"
             wishes={coupleWishes}
