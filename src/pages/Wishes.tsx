@@ -93,8 +93,8 @@ export default function Wishes() {
         <TabsContent value="couple">
           <WishSection
             title=""
-            subtitle="То, что вы хотите прожить, увидеть и построить вместе."
-            emptyTitle="У  пока нет общих мечт"
+            subtitle="То, что вы хотите прожить, увидеть и построить."
+            emptyTitle="У вас пока нет целей"
             wishes={coupleWishes}
             onToggleAchieved={(id, achieved) => updateWish(id, { status: achieved ? 'planned' : 'achieved' })}
             onDelete={deleteWish}
