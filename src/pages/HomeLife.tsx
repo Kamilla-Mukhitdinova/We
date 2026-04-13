@@ -1,4 +1,4 @@
-import { ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { ChangeEvent, useMemo, useRef, useState } from 'react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { motion } from 'framer-motion';
@@ -6,19 +6,6 @@ import { CalendarDays, CheckCircle2, ClipboardList, ImagePlus, Plus, Trash2 } fr
 import { useApp } from '@/lib/store';
 import { toDateKey } from '@/lib/task-helpers';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-
-function escapeHtml(value: string) {
-  return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#039;');
-}
-
-function plainToHtml(value: string) {
-  return escapeHtml(value).replaceAll('\n', '<br/>');
-}
 
 function stripHtml(value: string) {
   return value.replace(/<[^>]*>/g, '').replaceAll('&nbsp;', ' ').trim();
@@ -51,6 +38,7 @@ export default function HomeLife() {
   const [isRecurring, setIsRecurring] = useState(false);
   const [selectedDate, setSelectedDate] = useState(toDateKey(new Date()));
   const [draftReflection, setDraftReflection] = useState('<p></p>');
+  const [openedReflectionDate, setOpenedReflectionDate] = useState<string | null>(null);
   const editorRef = useRef<HTMLDivElement | null>(null);
 
   const purchasesSorted = useMemo(
@@ -62,28 +50,20 @@ export default function HomeLife() {
     [homePurchases]
   );
 
-  const myReflection = useMemo(
-    () => dailyReflections.find((item) => item.owner === activeUser && item.date === selectedDate) ?? null,
-    [activeUser, dailyReflections, selectedDate]
+  const reflectionDates = useMemo(
+    () =>
+      Array.from(new Set(dailyReflections.map((item) => item.date))).sort(
+        (a, b) => new Date(b).getTime() - new Date(a).getTime()
+      ),
+    [dailyReflections]
   );
 
-  useEffect(() => {
-    const nextValue =
-      myReflection?.text && /<\/?[a-z][\s\S]*>/i.test(myReflection.text)
-        ? myReflection.text
-        : plainToHtml(myReflection?.text ?? '');
-    setDraftReflection(nextValue);
-    if (editorRef.current) {
-      editorRef.current.innerHTML = nextValue || '<p></p>';
-    }
-  }, [myReflection, selectedDate]);
-
-  const dayReflections = useMemo(
+  const openedDayReflections = useMemo(
     () =>
       dailyReflections
-        .filter((item) => item.date === selectedDate)
+        .filter((item) => item.date === openedReflectionDate)
         .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()),
-    [dailyReflections, selectedDate]
+    [dailyReflections, openedReflectionDate]
   );
 
   const handleAddPurchase = () => {
@@ -103,7 +83,12 @@ export default function HomeLife() {
   const handleSaveReflection = () => {
     const html = editorRef.current?.innerHTML ?? draftReflection;
     const hasContent = stripHtml(html).length > 0;
-    upsertDailyReflection(selectedDate, hasContent ? html : '');
+    if (!hasContent) return;
+    upsertDailyReflection(selectedDate, html);
+    setDraftReflection('<p></p>');
+    if (editorRef.current) {
+      editorRef.current.innerHTML = '<p></p>';
+    }
   };
 
   const applyEditorCommand = (command: 'bold' | 'italic' | 'underline' | 'insertUnorderedList') => {
@@ -302,31 +287,51 @@ export default function HomeLife() {
 
           <div className="mt-5 space-y-2 rounded-2xl border bg-secondary/20 p-4">
             <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Просмотр записей</p>
-            {dayReflections.length === 0 ? (
+            {reflectionDates.length === 0 ? (
               <div className="rounded-xl bg-background px-4 py-8 text-center text-sm text-muted-foreground">
-                На эту дату записей нет
+                Записей пока нет
               </div>
             ) : (
-              dayReflections.map((entry) => (
-                <div key={entry.id} className="rounded-xl border bg-background p-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="text-xs font-medium text-muted-foreground">{entry.owner}</p>
-                    {entry.owner === activeUser ? (
-                      <button
-                        onClick={() => deleteDailyReflection(entry.id)}
-                        className="rounded-full p-1 text-muted-foreground transition-colors hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    ) : null}
-                  </div>
-                  {/<\/?[a-z][\s\S]*>/i.test(entry.text) ? (
-                    <div className="prose prose-sm mt-2 max-w-none leading-7" dangerouslySetInnerHTML={{ __html: entry.text }} />
-                  ) : (
-                    <p className="mt-2 whitespace-pre-wrap text-sm leading-6">{entry.text}</p>
-                  )}
+              <>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {reflectionDates.map((date) => (
+                    <button
+                      key={date}
+                      onClick={() => setOpenedReflectionDate((prev) => (prev === date ? null : date))}
+                      className={`rounded-xl border bg-background px-3 py-2 text-left text-sm transition-colors ${
+                        openedReflectionDate === date ? 'border-primary text-primary' : 'hover:border-primary/40'
+                      }`}
+                    >
+                      {format(new Date(date), 'd MMMM yyyy', { locale: ru })}
+                    </button>
+                  ))}
                 </div>
-              ))
+
+                {openedReflectionDate ? (
+                  <div className="space-y-2 pt-2">
+                    {openedDayReflections.map((entry) => (
+                      <div key={entry.id} className="rounded-xl border bg-background p-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-xs font-medium text-muted-foreground">{entry.owner}</p>
+                          {entry.owner === activeUser ? (
+                            <button
+                              onClick={() => deleteDailyReflection(entry.id)}
+                              className="rounded-full p-1 text-muted-foreground transition-colors hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          ) : null}
+                        </div>
+                        {/<\/?[a-z][\s\S]*>/i.test(entry.text) ? (
+                          <div className="prose prose-sm mt-2 max-w-none leading-7" dangerouslySetInnerHTML={{ __html: entry.text }} />
+                        ) : (
+                          <p className="mt-2 whitespace-pre-wrap text-sm leading-6">{entry.text}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </>
             )}
           </div>
         </motion.article>
