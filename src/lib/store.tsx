@@ -12,6 +12,7 @@ import {
   markLocalMutationAt,
   normalizeSharedSnapshot,
   saveLocalSnapshot,
+  shouldPromoteLocalSnapshotDuringHydration,
 } from './app-persistence';
 import { getOwnerByEmail, isSupabaseConfigured, ownerEmailMap, SUPABASE_STATE_ROW_ID, supabase } from './supabase';
 
@@ -82,7 +83,6 @@ interface ProfileRow {
 }
 
 interface SharedSettingsSnapshot {
-  wishes: Wish[];
   categories: string[];
   wishCategories: string[];
   dailyWishes: DailyWishMessage[];
@@ -464,20 +464,12 @@ async function replaceSharedSettingsSnapshot(pairId: string, snapshot: SharedSet
     custom_hadiths: snapshot.customHadiths,
   };
 
-  const wishesPayload: WishRow[] = snapshot.wishes.map((wish) => mapWishToWishRow(pairId, wish));
   const dailyWishesPayload: DailyWishRow[] = snapshot.dailyWishes.map((wish) =>
     mapDailyWishToDailyWishRow(pairId, wish)
   );
 
   const { error: settingsError } = await supabase.from('pair_settings').upsert(settingsPayload);
   if (settingsError) throw settingsError;
-
-  const { error: clearWishesError } = await supabase.from('wishes').delete().eq('pair_id', pairId);
-  if (clearWishesError) throw clearWishesError;
-  if (wishesPayload.length > 0) {
-    const { error: wishesError } = await supabase.from('wishes').upsert(wishesPayload, { onConflict: 'id' });
-    if (wishesError) throw wishesError;
-  }
 
   const { error: clearDailyWishesError } = await supabase
     .from('daily_wishes')
@@ -505,11 +497,25 @@ async function syncTaskRow(pairId: string, task: Task) {
   if (error) throw error;
 }
 
+async function syncWishRow(pairId: string, wish: Wish) {
+  if (!supabase) return;
+
+  const { error } = await supabase.from('wishes').upsert(mapWishToWishRow(pairId, wish), { onConflict: 'id' });
+  if (error) throw error;
+}
+
 async function removeTaskRow(taskId: string) {
   if (!supabase) return;
 
   // Delete by primary key only. RLS still limits access to own pair rows.
   const { error } = await supabase.from('tasks').delete().eq('id', taskId);
+  if (error) throw error;
+}
+
+async function removeWishRow(wishId: string) {
+  if (!supabase) return;
+
+  const { error } = await supabase.from('wishes').delete().eq('id', wishId);
   if (error) throw error;
 }
 
@@ -579,13 +585,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const sharedSettingsSnapshot = useMemo<SharedSettingsSnapshot>(
     () => ({
-      wishes,
       categories,
       wishCategories,
       dailyWishes,
       customHadiths,
     }),
-    [wishes, categories, wishCategories, dailyWishes, customHadiths]
+    [categories, wishCategories, dailyWishes, customHadiths]
   );
 
   const applySnapshot = useCallback((nextSnapshot: SharedAppSnapshot) => {
@@ -616,21 +621,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         'loadSharedSnapshot',
         READ_TIMEOUT_MS
       );
-      const localBackup = loadLocalBackup();
-      const lastLocalMutationAt = loadLastLocalMutationAt();
       const hasRemoteContent =
         remoteSnapshot.tasks.length > 0 ||
         remoteSnapshot.wishes.length > 0 ||
         remoteSnapshot.dailyWishes.length > 0;
-      const localBackupSavedAt = localBackup?.savedAt ? new Date(localBackup.savedAt).getTime() : 0;
-      const localMutationTimestamp = lastLocalMutationAt ? new Date(lastLocalMutationAt).getTime() : 0;
-      const remoteSnapshotUpdatedAt = remoteUpdatedAt ? new Date(remoteUpdatedAt).getTime() : 0;
-      const hasLocalSnapshotBackup = Boolean(localBackup?.hasContent && localBackupSavedAt > 0);
-      const hasLocalMutations = Boolean(lastLocalMutationAt && localMutationTimestamp > 0);
-      const shouldPromoteLocalSnapshot =
-        !hasRemoteContent &&
-        (hasLocalSnapshotBackup || hasLocalMutations) &&
-        localChangeVersionRef.current === startedAtVersion;
+      const localBackup = loadLocalBackup();
+      const lastLocalMutationAt = loadLastLocalMutationAt();
+      const shouldPromoteLocalSnapshot = shouldPromoteLocalSnapshotDuringHydration({
+        remoteSnapshot,
+        remoteUpdatedAt,
+        localBackup,
+        lastLocalMutationAt,
+        startedAtVersion,
+        currentLocalChangeVersion: localChangeVersionRef.current,
+      });
 
       if (!hasRemoteContent || shouldPromoteLocalSnapshot) {
         await withTimeout(replaceSharedSnapshot(pairId, snapshot), 'replaceSharedSnapshot', WRITE_TIMEOUT_MS);
@@ -915,6 +919,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       )
       .on(
         'postgres_changes',
+        { event: '*', schema: 'public', table: 'wishes', filter: `pair_id=eq.${currentPairId}` },
+        refreshFromRealtime
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'daily_wishes', filter: `pair_id=eq.${currentPairId}` },
+        refreshFromRealtime
+      )
+      .on(
+        'postgres_changes',
         { event: '*', schema: 'public', table: 'pair_settings', filter: `pair_id=eq.${currentPairId}` },
         refreshFromRealtime
       )
@@ -1183,11 +1197,34 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [currentPairId, markLocalChange]);
 
   const addWish = useCallback((wish: Omit<Wish, 'id' | 'createdAt'>) => {
+    const nextWish: Wish = { ...wish, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
     markLocalChange();
-    setWishes((prev) => [...prev, { ...wish, id: crypto.randomUUID(), createdAt: new Date().toISOString() }]);
-  }, [markLocalChange]);
+    setWishes((prev) => [...prev, nextWish]);
+
+    if (supabase && currentPairId) {
+      void withTimeout(
+        (async () => {
+          await syncWishRow(currentPairId, nextWish);
+          await touchPairSettings(currentPairId);
+        })(),
+        'syncWishRow',
+        WRITE_TIMEOUT_MS
+      )
+        .then(() => {
+          lastSharedSyncVersionRef.current = localChangeVersionRef.current;
+          setSyncStatus('online');
+          setSyncError(null);
+        })
+        .catch(() => {
+          lastSharedSyncVersionRef.current = localChangeVersionRef.current;
+          setSyncStatus('idle');
+          setSyncError(null);
+        });
+    }
+  }, [currentPairId, markLocalChange]);
 
   const updateWish = useCallback((id: string, updates: Partial<Wish>) => {
+    let syncedWish: Wish | null = null;
     markLocalChange();
     setWishes((prev) =>
       prev.map((wish) => {
@@ -1199,15 +1236,61 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (updates.status && updates.status !== 'achieved') {
           updated.achievedAt = undefined;
         }
+        syncedWish = updated;
         return updated;
       })
     );
-  }, [markLocalChange]);
+
+    if (supabase && currentPairId) {
+      queueMicrotask(() => {
+        if (!syncedWish) return;
+        void withTimeout(
+          (async () => {
+            await syncWishRow(currentPairId, syncedWish as Wish);
+            await touchPairSettings(currentPairId);
+          })(),
+          'syncWishRow',
+          WRITE_TIMEOUT_MS
+        )
+          .then(() => {
+            lastSharedSyncVersionRef.current = localChangeVersionRef.current;
+            setSyncStatus('online');
+            setSyncError(null);
+          })
+          .catch(() => {
+            lastSharedSyncVersionRef.current = localChangeVersionRef.current;
+            setSyncStatus('idle');
+            setSyncError(null);
+          });
+      });
+    }
+  }, [currentPairId, markLocalChange]);
 
   const deleteWish = useCallback((id: string) => {
     markLocalChange();
     setWishes((prev) => prev.filter((wish) => wish.id !== id));
-  }, [markLocalChange]);
+
+    if (supabase && currentPairId) {
+      void withTimeout(
+        (async () => {
+          await removeWishRow(id);
+          await touchPairSettings(currentPairId);
+        })(),
+        'removeWishRow',
+        WRITE_TIMEOUT_MS
+      )
+        .then(() => {
+          lastSharedSyncVersionRef.current = localChangeVersionRef.current;
+          setSyncStatus('online');
+          setSyncError(null);
+        })
+        .catch(() => {
+          lastSharedSyncVersionRef.current = localChangeVersionRef.current;
+          setSyncStatus('idle');
+          setSyncError(null);
+        });
+    }
+  }, [currentPairId, markLocalChange]);
 
   const addCategory = useCallback((category: string) => {
     markLocalChange();

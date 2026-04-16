@@ -22,6 +22,12 @@ interface SnapshotBackupEnvelope {
   savedAt: string;
 }
 
+export interface LocalBackupSnapshot {
+  snapshot: SharedAppSnapshot;
+  savedAt: string;
+  hasContent: boolean;
+}
+
 export const LOCAL_KEYS = {
   tasks: 'twp-tasks',
   wishes: 'twp-wishes',
@@ -97,7 +103,7 @@ export function normalizeSharedSnapshot(snapshot?: Partial<SharedAppSnapshot> | 
   };
 }
 
-function hasMeaningfulSnapshotContent(snapshot: SharedAppSnapshot) {
+export function hasMeaningfulSnapshotContent(snapshot: SharedAppSnapshot) {
   return (
     snapshot.tasks.length > 0 ||
     snapshot.wishes.length > 0 ||
@@ -140,6 +146,44 @@ export function loadLocalBackup() {
     ...backup,
     hasContent: hasMeaningfulSnapshotContent(backup.snapshot),
   };
+}
+
+function toTimestamp(value?: string | null) {
+  if (!value) return 0;
+  const timestamp = new Date(value).getTime();
+  return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
+export function shouldPromoteLocalSnapshotDuringHydration(params: {
+  remoteSnapshot: SharedAppSnapshot;
+  remoteUpdatedAt?: string | null;
+  localBackup?: LocalBackupSnapshot | null;
+  lastLocalMutationAt?: string | null;
+  startedAtVersion: number;
+  currentLocalChangeVersion: number;
+}) {
+  const hasRemoteContent = hasMeaningfulSnapshotContent(params.remoteSnapshot);
+  const localBackupSavedAt = toTimestamp(params.localBackup?.savedAt);
+  const localMutationTimestamp = toTimestamp(params.lastLocalMutationAt);
+  const remoteUpdatedAt = toTimestamp(params.remoteUpdatedAt);
+  const freshestLocalTimestamp = Math.max(localBackupSavedAt, localMutationTimestamp);
+  const hasFreshLocalState =
+    freshestLocalTimestamp > 0 &&
+    (params.localBackup?.hasContent || localMutationTimestamp > 0);
+
+  if (!hasFreshLocalState) {
+    return false;
+  }
+
+  if (params.currentLocalChangeVersion !== params.startedAtVersion) {
+    return false;
+  }
+
+  if (!hasRemoteContent) {
+    return true;
+  }
+
+  return freshestLocalTimestamp > remoteUpdatedAt;
 }
 
 export function loadLastLocalMutationAt() {

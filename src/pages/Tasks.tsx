@@ -82,17 +82,17 @@ export default function Tasks() {
   const groupedByCategory = useMemo(() => {
     const map = new Map<string, Task[]>();
     categories.forEach((category) => {
-      const categoryTasks = myTasks.filter((task) => task.category === category);
+      const categoryTasks = todayTasks.filter((task) => task.category === category);
       if (categoryTasks.length > 0) map.set(category, categoryTasks);
     });
-    myTasks
+    todayTasks
       .filter((task) => !map.has(task.category))
       .forEach((task) => {
         const current = map.get(task.category) ?? [];
         map.set(task.category, [...current, task]);
       });
     return Array.from(map.entries());
-  }, [categories, myTasks]);
+  }, [categories, todayTasks]);
 
   const tasksForSelectedDate = useMemo(() => {
     return myTasks.filter((task) => isTaskForDate(task, selectedDate));
