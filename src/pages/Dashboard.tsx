@@ -34,7 +34,7 @@ const DEFAULT_HADITHS = [
 
 const HERO_LABEL_KEY = 'twp-dashboard-hero-label';
 const HERO_QUOTE_KEY = 'twp-dashboard-hero-quote';
-const HERO_IMAGE_KEY = 'twp-dashboard-hero-image';
+const HERO_IMAGE_KEY = 'twp-dashboard-hero-image-v2';
 const DEFAULT_HERO_LABEL = 'Дэшборд';
 const DEFAULT_HERO_QUOTE =
   'Воистину, Аллах не меняет положения людей, пока они не изменят самих себя. Начни с себя — и Аллах откроет путь к лучшему.';
