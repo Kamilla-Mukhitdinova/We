@@ -7,7 +7,14 @@ import { toast } from 'sonner';
 export default function AuthGate({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isBootstrapping, storageMode, syncStatus, login } = useApp();
   const [password, setPassword] = useState('');
-  const isSupabaseConnected = storageMode === 'shared' && syncStatus !== 'error';
+  const isSharedConnected = storageMode === 'shared' && syncStatus !== 'error';
+  const storageLabel = storageMode === 'shared' ? 'Облачная синхронизация' : 'Локальная база';
+  const storageStatusLabel =
+    storageMode === 'shared'
+      ? isSharedConnected
+        ? 'Подключено'
+        : 'Не подключено'
+      : 'На этом устройстве';
 
   const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -18,7 +25,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     }
 
     if (isBootstrapping) {
-      toast.message('Подключаем общее хранилище, подождите пару секунд');
+      toast.message('Подготавливаем приложение, подождите пару секунд');
       return;
     }
 
@@ -45,10 +52,10 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
               <ShieldCheck className="h-4 w-4" />
             </div>
             <h1 className="font-display text-4xl font-bold tracking-tight text-foreground">
-              Пространство для нас
+              Пространство для больших достижений
             </h1>
             <p className="mt-4 max-w-xl text-sm leading-6 text-muted-foreground">
-              Пусть это будет наше тёплое место, где маленькие шаги каждый день превращаются в большие общие достижения.
+              Пусть это будет место, где маленькие шаги каждый день превращаются в большие достижения.
             </p>
             <p className="mt-3 max-w-xl text-xs leading-5 text-muted-foreground">
               
@@ -56,10 +63,10 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
 
             <div className="mt-5 inline-flex flex-wrap items-center gap-2 rounded-2xl bg-secondary/60 px-4 py-3 text-xs text-muted-foreground">
               <span className="font-medium text-foreground">
-                Supabase
+                {storageLabel}
               </span>
               <span className="rounded-full bg-background px-2 py-1">
-                {isSupabaseConnected ? 'Подключено' : 'Не подключено'}
+                {storageStatusLabel}
               </span>
             </div>
 
@@ -74,7 +81,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
               </div>
               <div className="rounded-2xl bg-secondary/60 p-4">
                 <p className="text-sm font-semibold">Процент</p>
-                <p className="mt-2 text-xs text-muted-foreground">Прогресс выполнения пары</p>
+                <p className="mt-2 text-xs text-muted-foreground">Прогресс выполнения</p>
               </div>
             </div>
           </section>
@@ -122,7 +129,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
               </button>
 
               <div className="rounded-2xl bg-secondary/60 p-4 text-xs leading-5 text-muted-foreground">
-                Войдите под своим именем и личным паролем. После входа пароль можно поменять в профиле.
+                Войдите под своим именем и личным паролем. Данные сохраняются локально в браузере, а пароль можно поменять в профиле.
               </div>
             </form>
           </section>

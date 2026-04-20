@@ -89,14 +89,15 @@ describe('app persistence', () => {
   });
 
   it('does not replace newer remote data with stale local snapshot', () => {
-    saveLocalSnapshot(fullSnapshot);
-    markLocalMutationAt('2026-04-03T10:00:00.000Z');
-
     const shouldPromote = shouldPromoteLocalSnapshotDuringHydration({
       remoteSnapshot: fullSnapshot,
       remoteUpdatedAt: '2026-04-03T13:00:00.000Z',
-      localBackup: loadLocalBackup(),
-      lastLocalMutationAt: loadLastLocalMutationAt(),
+      localBackup: {
+        snapshot: fullSnapshot,
+        savedAt: '2026-04-03T10:00:00.000Z',
+        hasContent: true,
+      },
+      lastLocalMutationAt: '2026-04-03T10:00:00.000Z',
       startedAtVersion: 2,
       currentLocalChangeVersion: 2,
     });

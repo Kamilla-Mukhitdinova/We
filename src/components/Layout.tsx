@@ -24,7 +24,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   const avatarInitial = 'К';
   const avatarBg = 'bg-kamilla';
-  const isSupabaseConnected = storageMode === 'shared' && syncStatus !== 'error';
+  const isSharedConnected = storageMode === 'shared' && syncStatus !== 'error';
+  const storageBadge =
+    storageMode === 'shared'
+      ? isSharedConnected
+        ? 'Облако подключено'
+        : 'Облако недоступно'
+      : 'Локальная база';
 
   return (
     <div className="min-h-screen bg-background transition-colors duration-300">
@@ -35,11 +41,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           {/* Logo + Nav */}
           <div className="flex items-center gap-6">
             <h1 className="font-display text-lg font-bold text-foreground tracking-tight whitespace-nowrap">
-              We Planner
+              Bismillah Planner
             </h1>
             <div className="hidden md:flex flex-col gap-1">
               <div className="inline-flex items-center rounded-full bg-secondary px-3 py-1 text-[11px] font-medium text-muted-foreground">
-                {isSupabaseConnected ? 'Supabase подключено' : 'Supabase не подключено'}
+                {storageBadge}
               </div>
             </div>
             <nav className="hidden sm:flex items-center gap-1">

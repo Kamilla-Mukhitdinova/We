@@ -13,12 +13,11 @@ describe("example", () => {
 
     render(createElement(App));
 
-    fireEvent.click(screen.getByRole("button", { name: "Kamilla" }));
     fireEvent.change(screen.getByLabelText("Пароль"), {
       target: { value: "kamilla123" },
     });
     fireEvent.click(screen.getByRole("button", { name: /Войти/i }));
 
-    expect(await screen.findByText(/Наш Дэшборд/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Bismillah Planner/i)).toBeInTheDocument();
   });
 });

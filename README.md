@@ -1,6 +1,6 @@
-# Task & Wish Planner
+# Bismillah Planner
 
-A personal task manager and wish board for couples — built with React, TypeScript, and Tailwind CSS.
+A personal planner for tasks, wishes, and family notes with local-first storage, built with React, TypeScript, and Tailwind CSS.
 
 ## Features
 
@@ -8,6 +8,7 @@ A personal task manager and wish board for couples — built with React, TypeScr
 - Wish board with Pinterest-style layout
 - Daily wishes and Hadith of the day
 - Progress tracking per user
+- Local browser storage by default, so the app works from a GitHub deploy without a database
 - Dark/Light mode
 - Kazakh ethno-inspired design
 
@@ -26,3 +27,9 @@ A personal task manager and wish board for couples — built with React, TypeScr
 npm install
 npm run dev
 ```
+
+## Storage
+
+By default, the app stores data locally in the browser (`localStorage`). That means a static deployment from GitHub works without configuring any external database.
+
+If you later want sync between devices, you can still enable the optional Supabase mode via `VITE_STORAGE_MODE=shared` and the related env variables described in [SUPABASE_SETUP.md](/Users/kamilla/Desktop/We/SUPABASE_SETUP.md).
