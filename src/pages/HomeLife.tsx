@@ -6,18 +6,11 @@ import { CalendarDays, CheckCircle2, ClipboardList, ImagePlus, Plus, Trash2 } fr
 import { useApp } from '@/lib/store';
 import { toDateKey } from '@/lib/task-helpers';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { toast } from 'sonner';
+import { prepareImageForStorage } from '@/lib/image-storage';
 
 function stripHtml(value: string) {
   return value.replace(/<[^>]*>/g, '').replaceAll('&nbsp;', ' ').trim();
-}
-
-function fileToDataUrl(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result ?? ''));
-    reader.onerror = () => reject(new Error('Не удалось прочитать изображение'));
-    reader.readAsDataURL(file);
-  });
 }
 
 export default function HomeLife() {
@@ -101,8 +94,10 @@ export default function HomeLife() {
     const file = event.target.files?.[0];
     if (!file) return;
     try {
-      const dataUrl = await fileToDataUrl(file);
+      const dataUrl = await prepareImageForStorage(file);
       setImageUrl(dataUrl);
+    } catch {
+      toast.error('Не удалось сохранить это изображение');
     } finally {
       event.target.value = '';
     }

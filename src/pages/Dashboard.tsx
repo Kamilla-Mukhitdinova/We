@@ -21,6 +21,8 @@ import { Owner } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { toast } from 'sonner';
+import { prepareImageForStorage } from '@/lib/image-storage';
 
 const DEFAULT_HADITHS = [
   'Лучший из вас тот, кто лучше всего относится к своей семье.',
@@ -38,15 +40,6 @@ const HERO_IMAGE_KEY = 'twp-dashboard-hero-image-v2';
 const DEFAULT_HERO_LABEL = 'Дэшборд';
 const DEFAULT_HERO_QUOTE =
   'Воистину, Аллах не меняет положения людей, пока они не изменят самих себя. Начни с себя — и Аллах откроет путь к лучшему.';
-
-function fileToDataUrl(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result ?? ''));
-    reader.onerror = () => reject(new Error('Не удалось прочитать изображение'));
-    reader.readAsDataURL(file);
-  });
-}
 
 function ownerMatches(rawOwner: string | null | undefined, target: Owner) {
   const owner = String(rawOwner ?? '').trim().toLowerCase();
@@ -194,8 +187,10 @@ export default function Dashboard() {
     if (!file) return;
 
     try {
-      const dataUrl = await fileToDataUrl(file);
+      const dataUrl = await prepareImageForStorage(file);
       setHeroImage(dataUrl);
+    } catch {
+      toast.error('Не удалось сохранить это изображение');
     } finally {
       event.target.value = '';
     }

@@ -7,6 +7,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { ImagePlus, X } from 'lucide-react';
+import { toast } from 'sonner';
+import { prepareImageForStorage } from '@/lib/image-storage';
 
 export function CreateWishDialog({
   open,
@@ -35,11 +37,16 @@ export function CreateWishDialog({
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      setImageUrl(ev.target?.result as string);
-    };
-    reader.readAsDataURL(file);
+    void prepareImageForStorage(file)
+      .then((dataUrl) => {
+        setImageUrl(dataUrl);
+      })
+      .catch(() => {
+        toast.error('Не удалось сохранить это изображение');
+      })
+      .finally(() => {
+        e.target.value = '';
+      });
   };
 
   const handleSubmit = (e: React.FormEvent) => {

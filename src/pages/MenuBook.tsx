@@ -3,15 +3,8 @@ import { motion } from 'framer-motion';
 import { BookOpenText, ImagePlus, Plus, Trash2, UtensilsCrossed } from 'lucide-react';
 import { useApp } from '@/lib/store';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-
-function fileToDataUrl(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result ?? ''));
-    reader.onerror = () => reject(new Error('Не удалось прочитать изображение'));
-    reader.readAsDataURL(file);
-  });
-}
+import { toast } from 'sonner';
+import { prepareImageForStorage } from '@/lib/image-storage';
 
 export default function MenuBook() {
   const { recipeEntries, addRecipeEntry, deleteRecipeEntry } = useApp();
@@ -29,8 +22,10 @@ export default function MenuBook() {
     if (!file) return;
 
     try {
-      const dataUrl = await fileToDataUrl(file);
+      const dataUrl = await prepareImageForStorage(file);
       setImageUrl(dataUrl);
+    } catch {
+      toast.error('Не удалось сохранить это изображение');
     } finally {
       event.target.value = '';
     }
