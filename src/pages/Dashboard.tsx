@@ -4,6 +4,7 @@ import { ru } from 'date-fns/locale';
 import { motion } from 'framer-motion';
 import {
   CheckCircle2,
+  GripVertical,
   ImagePlus,
   PencilLine,
   Sparkles,
@@ -74,6 +75,7 @@ export default function Dashboard() {
     activeUser,
     tasks,
     categories,
+    reorderCategory,
     toggleTaskForDate,
     customHadiths,
     taskCategoryIcons,
@@ -82,6 +84,7 @@ export default function Dashboard() {
   const [dailyHadith, setDailyHadith] = useState('');
   const [isHadithExpanded, setIsHadithExpanded] = useState(false);
   const [isHeroDialogOpen, setIsHeroDialogOpen] = useState(false);
+  const [draggedCategory, setDraggedCategory] = useState<string | null>(null);
   const [heroLabel, setHeroLabel] = useState(() => localStorage.getItem(HERO_LABEL_KEY) || DEFAULT_HERO_LABEL);
   const [heroQuote, setHeroQuote] = useState(() => localStorage.getItem(HERO_QUOTE_KEY) || DEFAULT_HERO_QUOTE);
   const [heroImage, setHeroImage] = useState(() => localStorage.getItem(HERO_IMAGE_KEY) || defaultHeroImage);
@@ -215,6 +218,12 @@ export default function Dashboard() {
     setHeroImage(defaultHeroImage);
   };
 
+  const handleCategoryDrop = (targetCategory: string) => {
+    if (!draggedCategory || draggedCategory === targetCategory) return;
+    reorderCategory(draggedCategory, targetCategory);
+    setDraggedCategory(null);
+  };
+
   return (
     <div className="space-y-6">
       <motion.section
@@ -291,7 +300,19 @@ export default function Dashboard() {
                 const categoryPercent = categoryTasks.length > 0 ? Math.round((doneCount / categoryTasks.length) * 100) : 0;
 
                 return (
-                  <div key={category} className="rounded-[1.5rem] border bg-secondary/15 p-4">
+                  <div
+                    key={category}
+                    className="rounded-[1.5rem] border bg-secondary/15 p-4"
+                    onDragOver={(event) => {
+                      if (!categories.includes(category) || !draggedCategory) return;
+                      event.preventDefault();
+                    }}
+                    onDrop={(event) => {
+                      if (!categories.includes(category) || !draggedCategory) return;
+                      event.preventDefault();
+                      handleCategoryDrop(category);
+                    }}
+                  >
                     <div className="mb-3 flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className={`flex h-10 w-10 items-center justify-center rounded-2xl ${meta.bg} ${meta.text}`}>
@@ -304,8 +325,21 @@ export default function Dashboard() {
                           </p>
                         </div>
                       </div>
-                      <div className="rounded-full bg-background px-3 py-1 text-xs font-semibold text-primary shadow-sm">
-                        {categoryPercent}%
+                      <div className="flex items-center gap-2">
+                        {categories.includes(category) && (
+                          <button
+                            draggable
+                            onDragStart={() => setDraggedCategory(category)}
+                            onDragEnd={() => setDraggedCategory(null)}
+                            className="rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
+                            title="Перетащите, чтобы изменить порядок категории"
+                          >
+                            <GripVertical className="h-4 w-4" />
+                          </button>
+                        )}
+                        <div className="rounded-full bg-background px-3 py-1 text-xs font-semibold text-primary shadow-sm">
+                          {categoryPercent}%
+                        </div>
                       </div>
                     </div>
 
