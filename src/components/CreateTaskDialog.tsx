@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { HabitRecurrence, TaskKind } from '@/lib/types';
+import { TASK_CATEGORY_ICON_OPTIONS, TaskCategoryIconKey } from '@/lib/task-category-icons';
 
 const DAYS = [
   { value: 1, label: 'Пн' },
@@ -27,6 +28,7 @@ export function CreateTaskDialog({ open, onClose }: { open: boolean; onClose: ()
   const [repeatDays, setRepeatDays] = useState<number[]>([1, 2, 3, 4, 5]);
   const [dueDateTime, setDueDateTime] = useState('');
   const [newCategory, setNewCategory] = useState('');
+  const [newCategoryIcon, setNewCategoryIcon] = useState<TaskCategoryIconKey>('generic');
   const [showNewCat, setShowNewCat] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -61,9 +63,10 @@ export function CreateTaskDialog({ open, onClose }: { open: boolean; onClose: ()
 
   const handleAddCategory = () => {
     if (newCategory.trim()) {
-      addCategory(newCategory.trim());
+      addCategory(newCategory.trim(), newCategoryIcon);
       setCategory(newCategory.trim());
       setNewCategory('');
+      setNewCategoryIcon('generic');
       setShowNewCat(false);
     }
   };
@@ -156,6 +159,14 @@ export function CreateTaskDialog({ open, onClose }: { open: boolean; onClose: ()
               </div>
             ) : (
               <div className="flex gap-2">
+                <Select value={newCategoryIcon} onValueChange={(value) => setNewCategoryIcon(value as TaskCategoryIconKey)}>
+                  <SelectTrigger className="w-[132px]"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {TASK_CATEGORY_ICON_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <Input value={newCategory} onChange={e => setNewCategory(e.target.value)} placeholder="Название категории" />
                 <button type="button" onClick={handleAddCategory} className="shrink-0 rounded-lg bg-primary px-3 text-sm text-primary-foreground">
                   Добавить

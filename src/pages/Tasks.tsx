@@ -3,14 +3,10 @@ import { format, parseISO } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { motion } from 'framer-motion';
 import {
-  BookOpenText,
-  BriefcaseBusiness,
   CalendarDays,
   CheckCircle2,
   Columns3,
-  Dumbbell,
-  Home,
-  Landmark,
+  GripVertical,
   Pencil,
   Plus,
   Settings,
@@ -21,6 +17,7 @@ import type { LucideIcon } from 'lucide-react';
 import { useApp } from '@/lib/store';
 import { Task, TaskStatus } from '@/lib/types';
 import { getTaskStatusForDate, isHabit, isTaskForDate, toDateKey } from '@/lib/task-helpers';
+import { getTaskCategoryIconSpec, inferTaskCategoryIconKey, TaskCategoryIconKey } from '@/lib/task-category-icons';
 import { Calendar } from '@/components/ui/calendar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { StatusBadge } from '@/components/Badges';
@@ -41,17 +38,17 @@ function translateCategory(category: string) {
   return category;
 }
 
-function getCategoryMeta(category: string): { icon: LucideIcon; bg: string; text: string } {
-  const lower = category.toLowerCase();
-  if (category === 'Home') return { icon: Home, bg: 'bg-amber-100', text: 'text-amber-700' };
-  if (category === 'Work') return { icon: BriefcaseBusiness, bg: 'bg-sky-100', text: 'text-sky-700' };
-  if (category === 'Study' || lower.includes('уч')) return { icon: BookOpenText, bg: 'bg-violet-100', text: 'text-violet-700' };
-  if (lower.includes('спорт')) return { icon: Dumbbell, bg: 'bg-emerald-100', text: 'text-emerald-700' };
-  return { icon: Landmark, bg: 'bg-rose-100', text: 'text-rose-700' };
+function getCategoryMeta(
+  category: string,
+  taskCategoryIcons: Record<string, TaskCategoryIconKey>
+): { icon: LucideIcon; bg: string; text: string } {
+  const iconKey = taskCategoryIcons[category] ?? inferTaskCategoryIconKey(category);
+  const spec = getTaskCategoryIconSpec(iconKey);
+  return { icon: spec.icon, bg: spec.bg, text: spec.text };
 }
 
 export default function Tasks() {
-  const { activeUser, tasks, updateTask, toggleTaskForDate, deleteTask, categories } = useApp();
+  const { activeUser, tasks, updateTask, toggleTaskForDate, deleteTask, categories, reorderCategory } = useApp();
   const [plannerView, setPlannerView] = useState<PlannerView>('list');
   const [statusFilter, setStatusFilter] = useState<'all' | TaskStatus>('all');
   const [showCreate, setShowCreate] = useState(false);
@@ -59,6 +56,7 @@ export default function Tasks() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
+  const [draggedCategory, setDraggedCategory] = useState<string | null>(null);
   const todayDate = new Date();
   const todayKey = toDateKey(todayDate);
   const selectedDateKey = toDateKey(selectedDate);
@@ -131,6 +129,12 @@ export default function Tasks() {
     if (!resolvedTaskId) return;
     updateTask(resolvedTaskId, { status });
     setDraggedTaskId(null);
+  };
+
+  const handleCategoryDrop = (targetCategory: string) => {
+    if (!draggedCategory || draggedCategory === targetCategory) return;
+    reorderCategory(draggedCategory, targetCategory);
+    setDraggedCategory(null);
   };
 
   return (
@@ -226,9 +230,29 @@ export default function Tasks() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.05 }}
                   className="rounded-[1.8rem] border bg-card p-5"
+                  onDragOver={(event) => {
+                    if (!categories.includes(category) || !draggedCategory || draggedTaskId) return;
+                    event.preventDefault();
+                  }}
+                  onDrop={(event) => {
+                    if (!categories.includes(category) || !draggedCategory || draggedTaskId) return;
+                    event.preventDefault();
+                    handleCategoryDrop(category);
+                  }}
                 >
                   <div className="mb-4 flex items-center justify-between">
                     <CategoryHeader category={category} count={categoryTasks.length} />
+                    {categories.includes(category) && (
+                      <button
+                        draggable
+                        onDragStart={() => setDraggedCategory(category)}
+                        onDragEnd={() => setDraggedCategory(null)}
+                        className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                        title="Перетащите, чтобы изменить порядок категории"
+                      >
+                        <GripVertical className="h-4 w-4" />
+                      </button>
+                    )}
                   </div>
                   <div className="space-y-3">
                     {categoryTasks.map((task) => (
@@ -301,13 +325,36 @@ export default function Tasks() {
                           </div>
                         ) : (
                           columnGroups.map(([category, tasksInCategory], groupIndex) => (
-                            <div key={category} className="space-y-3">
+                            <div
+                              key={category}
+                              className="space-y-3"
+                              onDragOver={(event) => {
+                                if (!categories.includes(category) || !draggedCategory || draggedTaskId) return;
+                                event.preventDefault();
+                              }}
+                              onDrop={(event) => {
+                                if (!categories.includes(category) || !draggedCategory || draggedTaskId) return;
+                                event.preventDefault();
+                                handleCategoryDrop(category);
+                              }}
+                            >
                               {groupIndex > 0 && <div className="mx-1 h-px bg-border/80" />}
                               <div className="flex items-center gap-2 px-2 pt-1">
                                 <div className="h-2 w-2 rounded-full bg-primary/60" />
                                 <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                                   {translateCategory(category)}
                                 </span>
+                                {categories.includes(category) && (
+                                  <button
+                                    draggable
+                                    onDragStart={() => setDraggedCategory(category)}
+                                    onDragEnd={() => setDraggedCategory(null)}
+                                    className="ml-auto rounded-full p-1 text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
+                                    title="Перетащите, чтобы изменить порядок категории"
+                                  >
+                                    <GripVertical className="h-3.5 w-3.5" />
+                                  </button>
+                                )}
                               </div>
                               <div className="space-y-2">
                                 {tasksInCategory.map((task) => (
@@ -432,7 +479,8 @@ export default function Tasks() {
 }
 
 function CategoryHeader({ category, count }: { category: string; count: number }) {
-  const meta = getCategoryMeta(category);
+  const { taskCategoryIcons } = useApp();
+  const meta = getCategoryMeta(category, taskCategoryIcons);
   const Icon = meta.icon;
 
   return (
@@ -465,7 +513,8 @@ function TaskCard({
   onDelete: () => void;
   onToggleDone: () => void;
 }) {
-  const meta = getCategoryMeta(task.category);
+  const { taskCategoryIcons } = useApp();
+  const meta = getCategoryMeta(task.category, taskCategoryIcons);
   const Icon = meta.icon;
   const effectiveStatus = getTaskStatusForDate(task, referenceDate);
 

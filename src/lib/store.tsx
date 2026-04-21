@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { DailyReflection, DailyWishMessage, HomePurchase, Owner, RecipeEntry, Task, Wish } from './types';
+import type { TaskCategoryIconKey } from './task-category-icons';
 import {
   DEFAULT_PASSWORDS,
   LOCAL_KEYS,
@@ -106,6 +107,7 @@ interface AppState {
   tasks: Task[];
   wishes: Wish[];
   categories: string[];
+  taskCategoryIcons: Record<string, TaskCategoryIconKey>;
   wishCategories: string[];
   dailyWishes: DailyWishMessage[];
   customHadiths: string[];
@@ -119,7 +121,9 @@ interface AppState {
   addWish: (wish: Omit<Wish, 'id' | 'createdAt'>) => void;
   updateWish: (id: string, updates: Partial<Wish>) => void;
   deleteWish: (id: string) => void;
-  addCategory: (category: string) => void;
+  addCategory: (category: string, iconKey?: TaskCategoryIconKey) => void;
+  setTaskCategoryIcon: (category: string, iconKey: TaskCategoryIconKey) => void;
+  reorderCategory: (source: string, target: string) => void;
   addWishCategory: (category: string) => void;
   deleteCategory: (category: string) => void;
   deleteWishCategory: (category: string) => void;
@@ -540,6 +544,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [tasks, setTasks] = useState<Task[]>(initialSnapshot.tasks);
   const [wishes, setWishes] = useState<Wish[]>(initialSnapshot.wishes);
   const [categories, setCategories] = useState<string[]>(initialSnapshot.categories);
+  const [taskCategoryIcons, setTaskCategoryIcons] = useState<Record<string, TaskCategoryIconKey>>(() =>
+    loadFromStorage<Record<string, TaskCategoryIconKey>>('twp-task-category-icons', {})
+  );
   const [wishCategories, setWishCategories] = useState<string[]>(initialSnapshot.wishCategories);
   const [dailyWishes, setDailyWishes] = useState<DailyWishMessage[]>(initialSnapshot.dailyWishes);
   const [customHadiths, setCustomHadiths] = useState<string[]>(initialSnapshot.customHadiths);
@@ -713,6 +720,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     saveLocalSnapshot(snapshot);
   }, [snapshot]);
+
+  useEffect(() => {
+    localStorage.setItem('twp-task-category-icons', JSON.stringify(taskCategoryIcons));
+  }, [taskCategoryIcons]);
 
   useEffect(() => {
     localStorage.setItem('twp-home-purchases', JSON.stringify(homePurchases));
@@ -1292,9 +1303,32 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [currentPairId, markLocalChange]);
 
-  const addCategory = useCallback((category: string) => {
+  const addCategory = useCallback((category: string, iconKey?: TaskCategoryIconKey) => {
     markLocalChange();
     setCategories((prev) => (prev.includes(category) ? prev : [...prev, category]));
+    if (iconKey) {
+      setTaskCategoryIcons((prev) => ({ ...prev, [category]: iconKey }));
+    }
+  }, [markLocalChange]);
+
+  const setTaskCategoryIcon = useCallback((category: string, iconKey: TaskCategoryIconKey) => {
+    markLocalChange();
+    setTaskCategoryIcons((prev) => ({ ...prev, [category]: iconKey }));
+  }, [markLocalChange]);
+
+  const reorderCategory = useCallback((source: string, target: string) => {
+    if (!source || !target || source === target) return;
+    markLocalChange();
+    setCategories((prev) => {
+      const sourceIndex = prev.indexOf(source);
+      const targetIndex = prev.indexOf(target);
+      if (sourceIndex === -1 || targetIndex === -1) return prev;
+
+      const next = [...prev];
+      const [moved] = next.splice(sourceIndex, 1);
+      next.splice(targetIndex, 0, moved);
+      return next;
+    });
   }, [markLocalChange]);
 
   const addWishCategory = useCallback((category: string) => {
@@ -1305,6 +1339,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const deleteCategory = useCallback((category: string) => {
     markLocalChange();
     setCategories((prev) => prev.filter((item) => item !== category));
+    setTaskCategoryIcons((prev) => {
+      const next = { ...prev };
+      delete next[category];
+      return next;
+    });
   }, [markLocalChange]);
 
   const deleteWishCategory = useCallback((category: string) => {
@@ -1418,6 +1457,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         tasks,
         wishes,
         categories,
+        taskCategoryIcons,
         wishCategories,
         dailyWishes,
         customHadiths,
@@ -1432,6 +1472,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         updateWish,
         deleteWish,
         addCategory,
+        setTaskCategoryIcon,
+        reorderCategory,
         addWishCategory,
         deleteCategory,
         deleteWishCategory,

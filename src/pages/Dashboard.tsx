@@ -3,21 +3,19 @@ import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { motion } from 'framer-motion';
 import {
-  BookOpenText,
-  BriefcaseBusiness,
   CheckCircle2,
-  Home,
   ImagePlus,
-  Landmark,
   PencilLine,
   Sparkles,
   SunMedium,
   Trash2,
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import defaultHeroImage from '@/assets/dashboard-serenity-garden.png';
 import { useApp } from '@/lib/store';
 import { getTaskStatusForDate, isTaskForDate, toDateKey } from '@/lib/task-helpers';
 import { Owner } from '@/lib/types';
+import { getTaskCategoryIconSpec, inferTaskCategoryIconKey, TaskCategoryIconKey } from '@/lib/task-category-icons';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -59,20 +57,26 @@ function getDailyIndex(length: number) {
   return day % length;
 }
 
-function getCategoryMeta(category: string) {
-  const lower = category.toLowerCase();
-  if (category === 'Home') return { icon: Home, bg: 'bg-amber-100', text: 'text-amber-700', label: 'Дом' };
-  if (category === 'Work') return { icon: BriefcaseBusiness, bg: 'bg-sky-100', text: 'text-sky-700', label: 'Работа' };
-  if (category === 'Study' || lower.includes('уч')) return { icon: BookOpenText, bg: 'bg-violet-100', text: 'text-violet-700', label: 'Учёба' };
-  return { icon: Landmark, bg: 'bg-rose-100', text: 'text-rose-700', label: category };
+function getCategoryMeta(
+  category: string,
+  taskCategoryIcons: Record<string, TaskCategoryIconKey>
+): { icon: LucideIcon; bg: string; text: string; label: string } {
+  const iconKey = taskCategoryIcons[category] ?? inferTaskCategoryIconKey(category);
+  const spec = getTaskCategoryIconSpec(iconKey);
+  if (category === 'Home') return { ...spec, label: 'Дом' };
+  if (category === 'Work') return { ...spec, label: 'Работа' };
+  if (category === 'Study') return { ...spec, label: 'Учёба' };
+  return { ...spec, label: category };
 }
 
 export default function Dashboard() {
   const {
     activeUser,
     tasks,
+    categories,
     toggleTaskForDate,
     customHadiths,
+    taskCategoryIcons,
     refreshSharedData,
   } = useApp();
   const [dailyHadith, setDailyHadith] = useState('');
@@ -87,7 +91,7 @@ export default function Dashboard() {
   const myTodayTasks = useMemo(
     () =>
       tasks.filter(
-        (task) => task.kind === 'task' && ownerMatches(task.owner, activeUser) && isTaskForDate(task, todayDate)
+        (task) => ownerMatches(task.owner, activeUser) && isTaskForDate(task, todayDate)
       ),
     [activeUser, tasks, todayDate]
   );
@@ -96,12 +100,21 @@ export default function Dashboard() {
   const todayPercent = myTodayTasks.length > 0 ? Math.round((todayDone / myTodayTasks.length) * 100) : 0;
   const myTodayByCategory = useMemo(() => {
     const map = new Map<string, typeof myTodayTasks>();
-    myTodayTasks.forEach((task) => {
-      const current = map.get(task.category) ?? [];
-      map.set(task.category, [...current, task]);
+
+    categories.forEach((category) => {
+      const categoryTasks = myTodayTasks.filter((task) => task.category === category);
+      if (categoryTasks.length > 0) map.set(category, categoryTasks);
     });
+
+    myTodayTasks
+      .filter((task) => !map.has(task.category))
+      .forEach((task) => {
+        const current = map.get(task.category) ?? [];
+        map.set(task.category, [...current, task]);
+      });
+
     return Array.from(map.entries());
-  }, [myTodayTasks]);
+  }, [categories, myTodayTasks]);
 
   useEffect(() => {
     void refreshSharedData();
@@ -245,9 +258,9 @@ export default function Dashboard() {
         >
           <div className="flex items-center justify-between gap-3">
             <div>
-              <h3 className="font-display text-2xl font-bold">Мои задачи на сегодня</h3>
+              <h3 className="font-display text-2xl font-bold">Мои задачи и привычки на сегодня</h3>
               <p className="mt-1 text-sm text-muted-foreground">
-                {myTodayTasks.length} задач на {format(new Date(), 'd MMMM', { locale: ru })}
+                {myTodayTasks.length} пунктов на {format(new Date(), 'd MMMM', { locale: ru })}
               </p>
             </div>
             <div className="rounded-2xl bg-primary/10 px-4 py-2 text-sm font-semibold text-primary">
@@ -267,12 +280,12 @@ export default function Dashboard() {
 
           {myTodayTasks.length === 0 ? (
             <div className="mt-5 rounded-[1.5rem] bg-secondary/40 px-5 py-10 text-center text-sm text-muted-foreground">
-              На сегодня пока нет задач. Можно спокойно спланировать день.
+              На сегодня пока нет задач и привычек. Можно спокойно спланировать день.
             </div>
           ) : (
             <div className="mt-5 space-y-4">
               {myTodayByCategory.map(([category, categoryTasks]) => {
-                const meta = getCategoryMeta(category);
+                const meta = getCategoryMeta(category, taskCategoryIcons);
                 const Icon = meta.icon;
                 const doneCount = categoryTasks.filter((task) => getTaskStatusForDate(task, todayDate) === 'done').length;
                 const categoryPercent = categoryTasks.length > 0 ? Math.round((doneCount / categoryTasks.length) * 100) : 0;
