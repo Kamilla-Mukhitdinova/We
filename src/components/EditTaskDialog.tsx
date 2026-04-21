@@ -36,7 +36,7 @@ export function EditTaskDialog({ task, open, onClose }: { task: Task | null; ope
       setDueDateTime(task.dueDateTime || '');
       setStatus(task.status);
       setKind(task.kind);
-      setRecurrence(task.recurrence ?? 'daily');
+      setRecurrence(task.recurrence === 'none' ? 'daily' : (task.recurrence ?? 'daily'));
       setRepeatDays(task.repeatDays ?? []);
     }
   }, [task]);

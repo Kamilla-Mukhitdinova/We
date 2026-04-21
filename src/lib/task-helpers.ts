@@ -25,6 +25,9 @@ export function isHabitScheduledOn(task: Task, date: Date) {
   if (endDate && isBefore(endDate, targetDate)) return false;
 
   const recurrence = task.recurrence ?? 'daily';
+  // Backward compatibility: older habits could have recurrence="none".
+  // Treat them as daily so they continue showing up on current days.
+  if (recurrence === 'none') return true;
   if (recurrence === 'daily') return true;
   if (recurrence === 'weekdays') return targetDate.getDay() >= 1 && targetDate.getDay() <= 5;
   if (recurrence === 'custom') return (task.repeatDays ?? []).includes(targetDate.getDay());
