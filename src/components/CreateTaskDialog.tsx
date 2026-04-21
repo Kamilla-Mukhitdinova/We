@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { HabitRecurrence, TaskKind } from '@/lib/types';
-import { TASK_CATEGORY_ICON_OPTIONS, TaskCategoryIconKey } from '@/lib/task-category-icons';
+import { TASK_CATEGORY_ICON_OPTIONS, TaskCategoryIconKey, getTaskCategoryIconSpec } from '@/lib/task-category-icons';
 
 const DAYS = [
   { value: 1, label: 'Пн' },
@@ -28,7 +28,7 @@ export function CreateTaskDialog({ open, onClose }: { open: boolean; onClose: ()
   const [repeatDays, setRepeatDays] = useState<number[]>([1, 2, 3, 4, 5]);
   const [dueDateTime, setDueDateTime] = useState('');
   const [newCategory, setNewCategory] = useState('');
-  const [newCategoryIcon, setNewCategoryIcon] = useState<TaskCategoryIconKey>('generic');
+  const [newCategoryIcon, setNewCategoryIcon] = useState<TaskCategoryIconKey | ''>('');
   const [showNewCat, setShowNewCat] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -62,11 +62,11 @@ export function CreateTaskDialog({ open, onClose }: { open: boolean; onClose: ()
   };
 
   const handleAddCategory = () => {
-    if (newCategory.trim()) {
+    if (newCategory.trim() && newCategoryIcon) {
       addCategory(newCategory.trim(), newCategoryIcon);
       setCategory(newCategory.trim());
       setNewCategory('');
-      setNewCategoryIcon('generic');
+      setNewCategoryIcon('');
       setShowNewCat(false);
     }
   };
@@ -163,12 +163,30 @@ export function CreateTaskDialog({ open, onClose }: { open: boolean; onClose: ()
                   <SelectTrigger className="w-[132px]"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {TASK_CATEGORY_ICON_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                      <SelectItem key={option.value} value={option.value}>
+                        <span className="inline-flex items-center gap-2">
+                          {(() => {
+                            const meta = getTaskCategoryIconSpec(option.value);
+                            const Icon = meta.icon;
+                            return (
+                              <span className={`inline-flex h-5 w-5 items-center justify-center rounded-full ${meta.bg} ${meta.text}`}>
+                                <Icon className="h-3 w-3" />
+                              </span>
+                            );
+                          })()}
+                          {option.label}
+                        </span>
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
                 <Input value={newCategory} onChange={e => setNewCategory(e.target.value)} placeholder="Название категории" />
-                <button type="button" onClick={handleAddCategory} className="shrink-0 rounded-lg bg-primary px-3 text-sm text-primary-foreground">
+                <button
+                  type="button"
+                  onClick={handleAddCategory}
+                  disabled={!newCategory.trim() || !newCategoryIcon}
+                  className="shrink-0 rounded-lg bg-primary px-3 text-sm text-primary-foreground disabled:opacity-50"
+                >
                   Добавить
                 </button>
                 <button type="button" onClick={() => setShowNewCat(false)} className="shrink-0 rounded-lg border px-3 text-sm text-muted-foreground">

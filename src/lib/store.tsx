@@ -108,6 +108,7 @@ interface AppState {
   wishes: Wish[];
   categories: string[];
   taskCategoryIcons: Record<string, TaskCategoryIconKey>;
+  taskOrderByCategory: Record<string, string[]>;
   wishCategories: string[];
   dailyWishes: DailyWishMessage[];
   customHadiths: string[];
@@ -124,6 +125,7 @@ interface AppState {
   addCategory: (category: string, iconKey?: TaskCategoryIconKey) => void;
   setTaskCategoryIcon: (category: string, iconKey: TaskCategoryIconKey) => void;
   reorderCategory: (source: string, target: string) => void;
+  reorderTaskInCategory: (category: string, sourceTaskId: string, targetTaskId: string) => void;
   addWishCategory: (category: string) => void;
   deleteCategory: (category: string) => void;
   deleteWishCategory: (category: string) => void;
@@ -547,6 +549,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [taskCategoryIcons, setTaskCategoryIcons] = useState<Record<string, TaskCategoryIconKey>>(() =>
     loadFromStorage<Record<string, TaskCategoryIconKey>>('twp-task-category-icons', {})
   );
+  const [taskOrderByCategory, setTaskOrderByCategory] = useState<Record<string, string[]>>(() =>
+    loadFromStorage<Record<string, string[]>>('twp-task-order-by-category', {})
+  );
   const [wishCategories, setWishCategories] = useState<string[]>(initialSnapshot.wishCategories);
   const [dailyWishes, setDailyWishes] = useState<DailyWishMessage[]>(initialSnapshot.dailyWishes);
   const [customHadiths, setCustomHadiths] = useState<string[]>(initialSnapshot.customHadiths);
@@ -724,6 +729,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     localStorage.setItem('twp-task-category-icons', JSON.stringify(taskCategoryIcons));
   }, [taskCategoryIcons]);
+
+  useEffect(() => {
+    localStorage.setItem('twp-task-order-by-category', JSON.stringify(taskOrderByCategory));
+  }, [taskOrderByCategory]);
 
   useEffect(() => {
     localStorage.setItem('twp-home-purchases', JSON.stringify(homePurchases));
@@ -1059,6 +1068,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const nextTask: Task = { ...task, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
     markLocalChange();
     setTasks((prev) => [...prev, nextTask]);
+    setTaskOrderByCategory((prev) => {
+      const current = prev[nextTask.category] ?? [];
+      if (current.includes(nextTask.id)) return prev;
+      return { ...prev, [nextTask.category]: [...current, nextTask.id] };
+    });
 
     if (supabase && currentPairId) {
       void withTimeout(
@@ -1084,10 +1098,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const updateTask = useCallback((id: string, updates: Partial<Task>) => {
     let syncedTask: Task | null = null;
+    let previousCategory: string | null = null;
     markLocalChange();
     setTasks((prev) =>
       prev.map((task) => {
         if (task.id !== id) return task;
+        previousCategory = task.category;
         const updated = { ...task, ...updates };
         if (updates.status === 'done' && task.status !== 'done') {
           updated.completedAt = new Date().toISOString();
@@ -1099,6 +1115,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return updated;
       })
     );
+    if (updates.category && previousCategory && updates.category !== previousCategory) {
+      setTaskOrderByCategory((prev) => {
+        const from = (prev[previousCategory as string] ?? []).filter((taskId) => taskId !== id);
+        const to = prev[updates.category as string] ?? [];
+        return {
+          ...prev,
+          [previousCategory as string]: from,
+          [updates.category as string]: to.includes(id) ? to : [...to, id],
+        };
+      });
+    }
 
     if (supabase && currentPairId) {
       queueMicrotask(() => {
@@ -1179,6 +1206,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const deleteTask = useCallback((id: string) => {
     markLocalChange();
     setTasks((prev) => prev.filter((task) => task.id !== id));
+    setTaskOrderByCategory((prev) => {
+      const next: Record<string, string[]> = {};
+      Object.entries(prev).forEach(([category, ids]) => {
+        const filtered = ids.filter((taskId) => taskId !== id);
+        if (filtered.length > 0) next[category] = filtered;
+      });
+      return next;
+    });
 
     if (supabase && !currentPairId) {
       pendingTaskDeletesRef.current.add(id);
@@ -1331,6 +1366,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   }, [markLocalChange]);
 
+  const reorderTaskInCategory = useCallback((category: string, sourceTaskId: string, targetTaskId: string) => {
+    if (!category || !sourceTaskId || !targetTaskId || sourceTaskId === targetTaskId) return;
+    markLocalChange();
+    setTaskOrderByCategory((prev) => {
+      const base = prev[category] ?? [];
+      const inCategory = tasks.filter((task) => task.category === category).map((task) => task.id);
+      const normalized = [...base.filter((id) => inCategory.includes(id)), ...inCategory.filter((id) => !base.includes(id))];
+      const sourceIndex = normalized.indexOf(sourceTaskId);
+      const targetIndex = normalized.indexOf(targetTaskId);
+      if (sourceIndex === -1 || targetIndex === -1) return prev;
+      const nextOrder = [...normalized];
+      const [moved] = nextOrder.splice(sourceIndex, 1);
+      nextOrder.splice(targetIndex, 0, moved);
+      return { ...prev, [category]: nextOrder };
+    });
+  }, [markLocalChange, tasks]);
+
   const addWishCategory = useCallback((category: string) => {
     markLocalChange();
     setWishCategories((prev) => (prev.includes(category) ? prev : [...prev, category]));
@@ -1458,6 +1510,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         wishes,
         categories,
         taskCategoryIcons,
+        taskOrderByCategory,
         wishCategories,
         dailyWishes,
         customHadiths,
@@ -1474,6 +1527,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         addCategory,
         setTaskCategoryIcon,
         reorderCategory,
+        reorderTaskInCategory,
         addWishCategory,
         deleteCategory,
         deleteWishCategory,

@@ -17,7 +17,7 @@ import type { LucideIcon } from 'lucide-react';
 import { useApp } from '@/lib/store';
 import { Task, TaskStatus } from '@/lib/types';
 import { getTaskStatusForDate, isHabit, isTaskForDate, toDateKey } from '@/lib/task-helpers';
-import { getTaskCategoryIconSpec, inferTaskCategoryIconKey, TaskCategoryIconKey } from '@/lib/task-category-icons';
+import { getTaskCategoryIconSpec, TaskCategoryIconKey } from '@/lib/task-category-icons';
 import { Calendar } from '@/components/ui/calendar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { StatusBadge } from '@/components/Badges';
@@ -42,13 +42,23 @@ function getCategoryMeta(
   category: string,
   taskCategoryIcons: Record<string, TaskCategoryIconKey>
 ): { icon: LucideIcon; bg: string; text: string } {
-  const iconKey = taskCategoryIcons[category] ?? inferTaskCategoryIconKey(category);
+  const iconKey = taskCategoryIcons[category] ?? 'generic';
   const spec = getTaskCategoryIconSpec(iconKey);
   return { icon: spec.icon, bg: spec.bg, text: spec.text };
 }
 
 export default function Tasks() {
-  const { activeUser, tasks, updateTask, toggleTaskForDate, deleteTask, categories, reorderCategory } = useApp();
+  const {
+    activeUser,
+    tasks,
+    updateTask,
+    toggleTaskForDate,
+    deleteTask,
+    categories,
+    reorderCategory,
+    taskOrderByCategory,
+    reorderTaskInCategory,
+  } = useApp();
   const [plannerView, setPlannerView] = useState<PlannerView>('list');
   const [statusFilter, setStatusFilter] = useState<'all' | TaskStatus>('all');
   const [showCreate, setShowCreate] = useState(false);
@@ -57,6 +67,7 @@ export default function Tasks() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
   const [draggedCategory, setDraggedCategory] = useState<string | null>(null);
+  const [draggedTaskOrderId, setDraggedTaskOrderId] = useState<string | null>(null);
   const todayDate = new Date();
   const todayKey = toDateKey(todayDate);
   const selectedDateKey = toDateKey(selectedDate);
@@ -78,19 +89,31 @@ export default function Tasks() {
   );
 
   const groupedByCategory = useMemo(() => {
+    const sortByCategoryOrder = (category: string, items: Task[]) => {
+      const order = taskOrderByCategory[category] ?? [];
+      return [...items].sort((a, b) => {
+        const ai = order.indexOf(a.id);
+        const bi = order.indexOf(b.id);
+        if (ai === -1 && bi === -1) return 0;
+        if (ai === -1) return 1;
+        if (bi === -1) return -1;
+        return ai - bi;
+      });
+    };
+
     const map = new Map<string, Task[]>();
     categories.forEach((category) => {
       const categoryTasks = todayTasks.filter((task) => task.category === category);
-      if (categoryTasks.length > 0) map.set(category, categoryTasks);
+      if (categoryTasks.length > 0) map.set(category, sortByCategoryOrder(category, categoryTasks));
     });
     todayTasks
       .filter((task) => !map.has(task.category))
       .forEach((task) => {
         const current = map.get(task.category) ?? [];
-        map.set(task.category, [...current, task]);
+        map.set(task.category, sortByCategoryOrder(task.category, [...current, task]));
       });
     return Array.from(map.entries());
-  }, [categories, todayTasks]);
+  }, [categories, taskOrderByCategory, todayTasks]);
 
   const tasksForSelectedDate = useMemo(() => {
     return myTasks.filter((task) => isTaskForDate(task, selectedDate));
@@ -135,6 +158,12 @@ export default function Tasks() {
     if (!draggedCategory || draggedCategory === targetCategory) return;
     reorderCategory(draggedCategory, targetCategory);
     setDraggedCategory(null);
+  };
+
+  const handleTaskOrderDrop = (targetTask: Task) => {
+    if (!draggedTaskOrderId || draggedTaskOrderId === targetTask.id) return;
+    reorderTaskInCategory(targetTask.category, draggedTaskOrderId, targetTask.id);
+    setDraggedTaskOrderId(null);
   };
 
   return (
@@ -256,14 +285,30 @@ export default function Tasks() {
                   </div>
                   <div className="space-y-3">
                     {categoryTasks.map((task) => (
-                      <TaskCard
+                      <div
                         key={task.id}
-                        task={task}
-                        referenceDate={todayDate}
-                        onEdit={() => setEditingTask(task)}
-                        onDelete={() => deleteTask(task.id)}
-                        onToggleDone={() => toggleTaskForDate(task.id, todayKey)}
-                      />
+                        draggable
+                        onDragStart={() => setDraggedTaskOrderId(task.id)}
+                        onDragEnd={() => setDraggedTaskOrderId(null)}
+                        onDragOver={(event) => {
+                          if (!draggedTaskOrderId || task.id === draggedTaskOrderId) return;
+                          event.preventDefault();
+                        }}
+                        onDrop={(event) => {
+                          if (!draggedTaskOrderId || task.id === draggedTaskOrderId) return;
+                          event.preventDefault();
+                          event.stopPropagation();
+                          handleTaskOrderDrop(task);
+                        }}
+                      >
+                        <TaskCard
+                          task={task}
+                          referenceDate={todayDate}
+                          onEdit={() => setEditingTask(task)}
+                          onDelete={() => deleteTask(task.id)}
+                          onToggleDone={() => toggleTaskForDate(task.id, todayKey)}
+                        />
+                      </div>
                     ))}
                   </div>
                 </motion.section>
@@ -279,8 +324,19 @@ export default function Tasks() {
             <div className="grid gap-4 xl:grid-cols-3">
                 {kanbanColumns.map((column, index) => {
                 const columnTasks = todayTasks.filter((task) => getTaskStatusForDate(task, todayDate) === column.status);
+                const sortByCategoryOrder = (category: string, items: Task[]) => {
+                  const order = taskOrderByCategory[category] ?? [];
+                  return [...items].sort((a, b) => {
+                    const ai = order.indexOf(a.id);
+                    const bi = order.indexOf(b.id);
+                    if (ai === -1 && bi === -1) return 0;
+                    if (ai === -1) return 1;
+                    if (bi === -1) return -1;
+                    return ai - bi;
+                  });
+                };
                 const columnGroups = categories
-                  .map((category) => [category, columnTasks.filter((task) => task.category === category)] as const)
+                  .map((category) => [category, sortByCategoryOrder(category, columnTasks.filter((task) => task.category === category))] as const)
                   .filter(([, tasksInCategory]) => tasksInCategory.length > 0);
 
                 columnTasks
@@ -293,6 +349,7 @@ export default function Tasks() {
                       columnGroups.push([task.category, [task]]);
                     }
                   });
+                const normalizedColumnGroups = columnGroups.map(([category, items]) => [category, sortByCategoryOrder(category, items)] as const);
 
                   return (
                     <motion.section
@@ -324,7 +381,7 @@ export default function Tasks() {
                             Перетащите сюда карточку
                           </div>
                         ) : (
-                          columnGroups.map(([category, tasksInCategory], groupIndex) => (
+                          normalizedColumnGroups.map(([category, tasksInCategory], groupIndex) => (
                             <div
                               key={category}
                               className="space-y-3"
@@ -363,10 +420,24 @@ export default function Tasks() {
                                     draggable
                                     onDragStart={(event) => {
                                       setDraggedTaskId(task.id);
+                                      setDraggedTaskOrderId(task.id);
                                       event.dataTransfer.setData('text/plain', task.id);
                                       event.dataTransfer.effectAllowed = 'move';
                                     }}
-                                    onDragEnd={() => setDraggedTaskId(null)}
+                                    onDragEnd={() => {
+                                      setDraggedTaskId(null);
+                                      setDraggedTaskOrderId(null);
+                                    }}
+                                    onDragOver={(event) => {
+                                      if (!draggedTaskOrderId || draggedTaskOrderId === task.id) return;
+                                      event.preventDefault();
+                                    }}
+                                    onDrop={(event) => {
+                                      if (!draggedTaskOrderId || draggedTaskOrderId === task.id) return;
+                                      event.preventDefault();
+                                      event.stopPropagation();
+                                      handleTaskOrderDrop(task);
+                                    }}
                                   >
                                     <TaskCard
                                       task={task}

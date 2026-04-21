@@ -16,7 +16,7 @@ import defaultHeroImage from '@/assets/dashboard-serenity-garden.png';
 import { useApp } from '@/lib/store';
 import { getTaskStatusForDate, isTaskForDate, toDateKey } from '@/lib/task-helpers';
 import { Owner } from '@/lib/types';
-import { getTaskCategoryIconSpec, inferTaskCategoryIconKey, TaskCategoryIconKey } from '@/lib/task-category-icons';
+import { getTaskCategoryIconSpec, TaskCategoryIconKey } from '@/lib/task-category-icons';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -62,7 +62,7 @@ function getCategoryMeta(
   category: string,
   taskCategoryIcons: Record<string, TaskCategoryIconKey>
 ): { icon: LucideIcon; bg: string; text: string; label: string } {
-  const iconKey = taskCategoryIcons[category] ?? inferTaskCategoryIconKey(category);
+  const iconKey = taskCategoryIcons[category] ?? 'generic';
   const spec = getTaskCategoryIconSpec(iconKey);
   if (category === 'Home') return { ...spec, label: 'Дом' };
   if (category === 'Work') return { ...spec, label: 'Работа' };
@@ -76,6 +76,8 @@ export default function Dashboard() {
     tasks,
     categories,
     reorderCategory,
+    taskOrderByCategory,
+    reorderTaskInCategory,
     toggleTaskForDate,
     customHadiths,
     taskCategoryIcons,
@@ -85,6 +87,7 @@ export default function Dashboard() {
   const [isHadithExpanded, setIsHadithExpanded] = useState(false);
   const [isHeroDialogOpen, setIsHeroDialogOpen] = useState(false);
   const [draggedCategory, setDraggedCategory] = useState<string | null>(null);
+  const [draggedTaskOrderId, setDraggedTaskOrderId] = useState<string | null>(null);
   const [heroLabel, setHeroLabel] = useState(() => localStorage.getItem(HERO_LABEL_KEY) || DEFAULT_HERO_LABEL);
   const [heroQuote, setHeroQuote] = useState(() => localStorage.getItem(HERO_QUOTE_KEY) || DEFAULT_HERO_QUOTE);
   const [heroImage, setHeroImage] = useState(() => localStorage.getItem(HERO_IMAGE_KEY) || defaultHeroImage);
@@ -102,22 +105,34 @@ export default function Dashboard() {
   const todayDone = myTodayTasks.filter((task) => getTaskStatusForDate(task, todayDate) === 'done').length;
   const todayPercent = myTodayTasks.length > 0 ? Math.round((todayDone / myTodayTasks.length) * 100) : 0;
   const myTodayByCategory = useMemo(() => {
+    const sortByCategoryOrder = (category: string, items: typeof myTodayTasks) => {
+      const order = taskOrderByCategory[category] ?? [];
+      return [...items].sort((a, b) => {
+        const ai = order.indexOf(a.id);
+        const bi = order.indexOf(b.id);
+        if (ai === -1 && bi === -1) return 0;
+        if (ai === -1) return 1;
+        if (bi === -1) return -1;
+        return ai - bi;
+      });
+    };
+
     const map = new Map<string, typeof myTodayTasks>();
 
     categories.forEach((category) => {
       const categoryTasks = myTodayTasks.filter((task) => task.category === category);
-      if (categoryTasks.length > 0) map.set(category, categoryTasks);
+      if (categoryTasks.length > 0) map.set(category, sortByCategoryOrder(category, categoryTasks));
     });
 
     myTodayTasks
       .filter((task) => !map.has(task.category))
       .forEach((task) => {
         const current = map.get(task.category) ?? [];
-        map.set(task.category, [...current, task]);
+        map.set(task.category, sortByCategoryOrder(task.category, [...current, task]));
       });
 
     return Array.from(map.entries());
-  }, [categories, myTodayTasks]);
+  }, [categories, myTodayTasks, taskOrderByCategory]);
 
   useEffect(() => {
     void refreshSharedData();
@@ -222,6 +237,12 @@ export default function Dashboard() {
     if (!draggedCategory || draggedCategory === targetCategory) return;
     reorderCategory(draggedCategory, targetCategory);
     setDraggedCategory(null);
+  };
+
+  const handleTaskOrderDrop = (category: string, targetTaskId: string) => {
+    if (!draggedTaskOrderId || draggedTaskOrderId === targetTaskId) return;
+    reorderTaskInCategory(category, draggedTaskOrderId, targetTaskId);
+    setDraggedTaskOrderId(null);
   };
 
   return (
@@ -348,7 +369,23 @@ export default function Dashboard() {
                         const taskStatus = getTaskStatusForDate(task, todayDate);
 
                         return (
-                          <div key={task.id} className="rounded-[1.4rem] bg-secondary/35 p-4">
+                          <div
+                            key={task.id}
+                            draggable
+                            onDragStart={() => setDraggedTaskOrderId(task.id)}
+                            onDragEnd={() => setDraggedTaskOrderId(null)}
+                            onDragOver={(event) => {
+                              if (!draggedTaskOrderId || draggedTaskOrderId === task.id) return;
+                              event.preventDefault();
+                            }}
+                            onDrop={(event) => {
+                              if (!draggedTaskOrderId || draggedTaskOrderId === task.id) return;
+                              event.preventDefault();
+                              event.stopPropagation();
+                              handleTaskOrderDrop(category, task.id);
+                            }}
+                            className="rounded-[1.4rem] bg-secondary/35 p-4"
+                          >
                             <div className="flex items-center justify-between gap-3">
                               <div className="flex items-center gap-3">
                                 <button

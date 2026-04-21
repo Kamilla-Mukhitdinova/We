@@ -1,4 +1,4 @@
-import { BookOpenText, BriefcaseBusiness, Dumbbell, Heart, Home, Landmark, Sparkles, UtensilsCrossed } from 'lucide-react';
+import { BookOpenText, BriefcaseBusiness, Dumbbell, Heart, Home, Landmark, MoonStar, Sparkles, UtensilsCrossed } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export type TaskCategoryIconKey =
@@ -8,6 +8,7 @@ export type TaskCategoryIconKey =
   | 'sport'
   | 'health'
   | 'food'
+  | 'islam'
   | 'star'
   | 'generic';
 
@@ -25,6 +26,7 @@ const TASK_CATEGORY_ICON_SPECS: Record<TaskCategoryIconKey, TaskCategoryIconSpec
   sport: { icon: Dumbbell, bg: 'bg-emerald-100', text: 'text-emerald-700', label: 'Спорт' },
   health: { icon: Heart, bg: 'bg-rose-100', text: 'text-rose-700', label: 'Здоровье' },
   food: { icon: UtensilsCrossed, bg: 'bg-orange-100', text: 'text-orange-700', label: 'Еда' },
+  islam: { icon: MoonStar, bg: 'bg-teal-100', text: 'text-teal-700', label: 'Ислам' },
   star: { icon: Sparkles, bg: 'bg-indigo-100', text: 'text-indigo-700', label: 'Важное' },
   generic: { icon: Landmark, bg: 'bg-slate-100', text: 'text-slate-700', label: 'Другое' },
 };
@@ -36,6 +38,7 @@ export const TASK_CATEGORY_ICON_OPTIONS: Array<{ value: TaskCategoryIconKey; lab
   { value: 'sport', label: TASK_CATEGORY_ICON_SPECS.sport.label },
   { value: 'health', label: TASK_CATEGORY_ICON_SPECS.health.label },
   { value: 'food', label: TASK_CATEGORY_ICON_SPECS.food.label },
+  { value: 'islam', label: TASK_CATEGORY_ICON_SPECS.islam.label },
   { value: 'star', label: TASK_CATEGORY_ICON_SPECS.star.label },
   { value: 'generic', label: TASK_CATEGORY_ICON_SPECS.generic.label },
 ];
@@ -45,14 +48,6 @@ export function getTaskCategoryIconSpec(iconKey: TaskCategoryIconKey) {
 }
 
 export function inferTaskCategoryIconKey(category: string): TaskCategoryIconKey {
-  const lower = category.trim().toLowerCase();
-
-  if (category === 'Home' || lower.includes('дом')) return 'home';
-  if (category === 'Work' || lower.includes('раб')) return 'work';
-  if (category === 'Study' || lower.includes('уч') || lower.includes('study')) return 'study';
-  if (lower.includes('спорт') || lower.includes('gym') || lower.includes('трен')) return 'sport';
-  if (lower.includes('здор') || lower.includes('health')) return 'health';
-  if (lower.includes('еда') || lower.includes('food') || lower.includes('кух')) return 'food';
-
+  void category;
   return 'generic';
 }
