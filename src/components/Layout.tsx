@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useApp } from '@/lib/store';
 import { useTheme } from '@/hooks/use-theme';
-import { LayoutDashboard, ListTodo, Heart, Plus, LogOut, KeyRound, Sun, Moon, BarChart3, Type, House, UtensilsCrossed } from 'lucide-react';
+import { LayoutDashboard, ListTodo, Heart, Plus, LogOut, KeyRound, Sun, Moon, BarChart3, Type, House, UtensilsCrossed, CalendarDays } from 'lucide-react';
 import { CreateTaskDialog } from '@/components/CreateTaskDialog';
 import { CreateWishDialog } from '@/components/CreateWishDialog';
 import { ChangePasswordDialog } from '@/components/ChangePasswordDialog';
@@ -35,22 +35,33 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-background transition-colors duration-300">
       {/* Header */}
-      <header className="sticky top-0 z-50 border-b bg-card/80 backdrop-blur-xl">
+      <header className="sticky top-0 z-50 border-b bg-card/75 shadow-sm shadow-slate-900/5 backdrop-blur-xl">
         <div className="ethno-line" />
-        <div className="container flex h-14 items-center justify-between gap-4">
+        <div className="container flex min-h-16 items-center justify-between gap-4 py-2">
           {/* Logo + Nav */}
-          <div className="flex items-center gap-6">
-            <h1 className="font-display text-lg font-bold text-foreground tracking-tight whitespace-nowrap">
-              Bismillah Planner
-            </h1>
-            <div className="hidden md:flex flex-col gap-1">
-              <div className="inline-flex items-center rounded-full bg-secondary px-3 py-1 text-[11px] font-medium text-muted-foreground">
+          <div className="flex min-w-0 items-center gap-5">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary text-sm font-black text-primary-foreground shadow-sm">
+                BP
+              </div>
+              <div>
+                <h1 className="font-display text-lg font-extrabold tracking-tight text-foreground whitespace-nowrap">
+                  Bismillah Planner
+                </h1>
+                <p className="hidden text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground md:block">
+                  Focus daily
+                </p>
+              </div>
+            </div>
+            <div className="hidden lg:flex flex-col gap-1">
+              <div className="inline-flex items-center rounded-full border bg-background/70 px-3 py-1 text-[11px] font-semibold text-muted-foreground">
                 {storageBadge}
               </div>
             </div>
-            <nav className="hidden sm:flex items-center gap-1">
+            <nav className="hidden sm:flex items-center gap-1 rounded-2xl border bg-background/70 p-1 shadow-sm">
               <NavTab to="/" label="Дэшборд" icon={<LayoutDashboard className="h-4 w-4" />} />
               <NavTab to="/tasks" label="Мои задачи" icon={<ListTodo className="h-4 w-4" />} />
+              <NavTab to="/calendar" label="Календарь" icon={<CalendarDays className="h-4 w-4" />} />
               <NavTab to="/wishes" label="Мечты" icon={<Heart className="h-4 w-4" />} />
               <NavTab to="/menu-book" label="Меню" icon={<UtensilsCrossed className="h-4 w-4" />} />
               <NavTab to="/analytics" label="Аналитика" icon={<BarChart3 className="h-4 w-4" />} />
@@ -100,7 +111,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm hover:opacity-90 transition-opacity"
+                  className="flex h-9 w-9 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm hover:opacity-90 transition-opacity"
                 >
                   <Plus className="h-4 w-4" />
                 </motion.button>
@@ -120,8 +131,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             {/* Profile pill */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-2 rounded-full border bg-card px-2 py-1 hover:bg-secondary transition-colors">
-                  <div className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold text-primary-foreground ${avatarBg}`}>
+                <button className="flex items-center gap-2 rounded-2xl border bg-background/70 px-2 py-1.5 shadow-sm transition-colors hover:bg-secondary">
+                  <div className={`flex h-7 w-7 items-center justify-center rounded-xl text-xs font-semibold text-primary-foreground ${avatarBg}`}>
                     {avatarInitial}
                   </div>
                   <span className="text-sm font-medium hidden sm:block">{activeUser}</span>
@@ -143,10 +154,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       </header>
 
       {/* Mobile bottom nav */}
-      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-50 border-t bg-card/95 backdrop-blur-lg safe-area-bottom">
-        <div className="flex justify-around py-1.5">
+      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-50 border-t bg-card/95 shadow-2xl shadow-slate-900/10 backdrop-blur-lg safe-area-bottom">
+        <div className="flex justify-around py-2">
           <MobileNavTab to="/" icon={<LayoutDashboard className="h-5 w-5" />} label="Дэшборд" />
           <MobileNavTab to="/tasks" icon={<ListTodo className="h-5 w-5" />} label="Мои" />
+          <MobileNavTab to="/calendar" icon={<CalendarDays className="h-5 w-5" />} label="Календарь" />
           <MobileNavTab to="/wishes" icon={<Heart className="h-5 w-5" />} label="Мечты" />
           <MobileNavTab to="/menu-book" icon={<UtensilsCrossed className="h-5 w-5" />} label="Меню" />
           <MobileNavTab to="/analytics" icon={<BarChart3 className="h-5 w-5" />} label="График" />
@@ -154,7 +166,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </nav>
 
-      <main className="container py-6 pb-24 sm:pb-8 max-w-5xl">
+      <main className="container max-w-6xl py-6 pb-24 sm:pb-10">
         <AnimatePresence mode="wait">
           <motion.div
             key={location.pathname}
@@ -181,9 +193,9 @@ function NavTab({ to, label, icon }: { to: string; label: string; icon: React.Re
       to={to}
       end={to === '/'}
       className={({ isActive }) =>
-        `flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-all ${
+        `flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-all ${
           isActive
-            ? 'bg-primary/10 text-primary'
+            ? 'bg-primary text-primary-foreground shadow-sm'
             : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
         }`
       }
@@ -200,8 +212,8 @@ function MobileNavTab({ to, icon, label }: { to: string; icon: React.ReactNode; 
       to={to}
       end={to === '/'}
       className={({ isActive }) =>
-        `flex flex-col items-center gap-0.5 px-4 py-1 text-[11px] font-medium transition-colors ${
-          isActive ? 'text-primary' : 'text-muted-foreground'
+        `flex flex-col items-center gap-0.5 rounded-xl px-3 py-1 text-[11px] font-semibold transition-colors ${
+          isActive ? 'bg-primary/10 text-primary' : 'text-muted-foreground'
         }`
       }
     >

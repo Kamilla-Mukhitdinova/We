@@ -108,6 +108,7 @@ interface AppState {
   wishes: Wish[];
   categories: string[];
   taskCategoryIcons: Record<string, TaskCategoryIconKey>;
+  taskCategoryImages: Record<string, string>;
   taskOrderByCategory: Record<string, string[]>;
   wishCategories: string[];
   dailyWishes: DailyWishMessage[];
@@ -124,6 +125,7 @@ interface AppState {
   deleteWish: (id: string) => void;
   addCategory: (category: string, iconKey?: TaskCategoryIconKey) => void;
   setTaskCategoryIcon: (category: string, iconKey: TaskCategoryIconKey) => void;
+  setTaskCategoryImage: (category: string, imageUrl?: string) => void;
   reorderCategory: (source: string, target: string) => void;
   reorderTaskInCategory: (category: string, sourceTaskId: string, targetTaskId: string) => void;
   addWishCategory: (category: string) => void;
@@ -549,6 +551,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [taskCategoryIcons, setTaskCategoryIcons] = useState<Record<string, TaskCategoryIconKey>>(() =>
     loadFromStorage<Record<string, TaskCategoryIconKey>>('twp-task-category-icons', {})
   );
+  const [taskCategoryImages, setTaskCategoryImages] = useState<Record<string, string>>(() =>
+    loadFromStorage<Record<string, string>>('twp-task-category-images', {})
+  );
   const [taskOrderByCategory, setTaskOrderByCategory] = useState<Record<string, string[]>>(() =>
     loadFromStorage<Record<string, string[]>>('twp-task-order-by-category', {})
   );
@@ -729,6 +734,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     localStorage.setItem('twp-task-category-icons', JSON.stringify(taskCategoryIcons));
   }, [taskCategoryIcons]);
+
+  useEffect(() => {
+    localStorage.setItem('twp-task-category-images', JSON.stringify(taskCategoryImages));
+  }, [taskCategoryImages]);
 
   useEffect(() => {
     localStorage.setItem('twp-task-order-by-category', JSON.stringify(taskOrderByCategory));
@@ -1351,6 +1360,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setTaskCategoryIcons((prev) => ({ ...prev, [category]: iconKey }));
   }, [markLocalChange]);
 
+  const setTaskCategoryImage = useCallback((category: string, imageUrl?: string) => {
+    markLocalChange();
+    setTaskCategoryImages((prev) => {
+      const next = { ...prev };
+      if (imageUrl) {
+        next[category] = imageUrl;
+      } else {
+        delete next[category];
+      }
+      return next;
+    });
+  }, [markLocalChange]);
+
   const reorderCategory = useCallback((source: string, target: string) => {
     if (!source || !target || source === target) return;
     markLocalChange();
@@ -1392,6 +1414,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     markLocalChange();
     setCategories((prev) => prev.filter((item) => item !== category));
     setTaskCategoryIcons((prev) => {
+      const next = { ...prev };
+      delete next[category];
+      return next;
+    });
+    setTaskCategoryImages((prev) => {
       const next = { ...prev };
       delete next[category];
       return next;
@@ -1510,6 +1537,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         wishes,
         categories,
         taskCategoryIcons,
+        taskCategoryImages,
         taskOrderByCategory,
         wishCategories,
         dailyWishes,
@@ -1526,6 +1554,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         deleteWish,
         addCategory,
         setTaskCategoryIcon,
+        setTaskCategoryImage,
         reorderCategory,
         reorderTaskInCategory,
         addWishCategory,

@@ -47,21 +47,19 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-background px-4 py-10">
       <div className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-5xl items-center justify-center">
         <div className="grid w-full max-w-4xl gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-          <section className="rounded-[2rem] border bg-card p-8 shadow-sm">
-            <div className="mb-8 inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm font-medium text-primary">
+          <section className="dashboard-hero planner-surface rounded-[1.5rem] border bg-card p-8">
+            <div className="mb-8 inline-flex items-center gap-2 rounded-2xl border border-primary/20 bg-background/80 px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-primary">
               <ShieldCheck className="h-4 w-4" />
+              Private planner
             </div>
-            <h1 className="font-display text-4xl font-bold tracking-tight text-foreground">
+            <h1 className="font-display text-5xl font-extrabold leading-tight tracking-tight text-foreground">
               Пространство для больших достижений
             </h1>
-            <p className="mt-4 max-w-xl text-sm leading-6 text-muted-foreground">
-              Пусть это будет место, где маленькие шаги каждый день превращаются в большие достижения.
-            </p>
-            <p className="mt-3 max-w-xl text-xs leading-5 text-muted-foreground">
-              
+            <p className="mt-5 max-w-xl text-base leading-7 text-muted-foreground">
+              Место, где намерения превращаются в ясный план, а маленькие шаги каждый день собираются в большой результат.
             </p>
 
-            <div className="mt-5 inline-flex flex-wrap items-center gap-2 rounded-2xl bg-secondary/60 px-4 py-3 text-xs text-muted-foreground">
+            <div className="mt-6 inline-flex flex-wrap items-center gap-2 rounded-2xl border bg-background/70 px-4 py-3 text-xs text-muted-foreground">
               <span className="font-medium text-foreground">
                 {storageLabel}
               </span>
@@ -71,28 +69,28 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
             </div>
 
             <div className="mt-8 grid gap-4 sm:grid-cols-3">
-              <div className="rounded-2xl bg-secondary/60 p-4">
-                <p className="text-sm font-semibold">Поставлено задач</p>
-                <p className="mt-2 text-xs text-muted-foreground">Общий объём задач</p>
+              <div className="rounded-2xl border bg-background/70 p-4">
+                <p className="text-sm font-bold">Намерение</p>
+                <p className="mt-2 text-xs leading-5 text-muted-foreground">Начать день осознанно</p>
               </div>
-              <div className="rounded-2xl bg-secondary/60 p-4">
-                <p className="text-sm font-semibold">Выполнено</p>
-                <p className="mt-2 text-xs text-muted-foreground">Сколько уже закрыто</p>
+              <div className="rounded-2xl border bg-background/70 p-4">
+                <p className="text-sm font-bold">Фокус</p>
+                <p className="mt-2 text-xs leading-5 text-muted-foreground">Видеть главное</p>
               </div>
-              <div className="rounded-2xl bg-secondary/60 p-4">
-                <p className="text-sm font-semibold">Процент</p>
-                <p className="mt-2 text-xs text-muted-foreground">Прогресс выполнения</p>
+              <div className="rounded-2xl border bg-background/70 p-4">
+                <p className="text-sm font-bold">Дисциплина</p>
+                <p className="mt-2 text-xs leading-5 text-muted-foreground">Двигаться шагами</p>
               </div>
             </div>
           </section>
 
-          <section className="rounded-[2rem] border bg-card p-8 shadow-sm">
+          <section className="planner-surface rounded-[1.5rem] border bg-card p-8">
             <div className="mb-6 flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm">
                 <LockKeyhole className="h-5 w-5" />
               </div>
               <div>
-                <h2 className="font-display text-2xl font-bold">Авторизация</h2>
+                <h2 className="font-display text-2xl font-extrabold">Вход</h2>
                 <p className="text-xs text-muted-foreground">Личный вход Камиллы</p>
               </div>
             </div>
@@ -100,7 +98,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
             <form onSubmit={handleLogin} className="space-y-5">
               <div className="grid gap-2">
                 <span className="text-sm font-medium">Аккаунт</span>
-                <div className="rounded-2xl border border-primary bg-primary/10 px-4 py-3 text-sm font-medium text-primary">
+                <div className="rounded-2xl border border-primary/30 bg-primary/10 px-4 py-3 text-sm font-bold text-primary">
                   Kamilla
                 </div>
               </div>
@@ -122,13 +120,13 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
               <button
                 type="submit"
                 disabled={isBootstrapping}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-3 text-sm font-bold text-primary-foreground shadow-sm transition-opacity hover:opacity-90"
               >
                 <HeartHandshake className="h-4 w-4" />
                 {isBootstrapping ? 'Подключаем...' : 'Войти'}
               </button>
 
-              <div className="rounded-2xl bg-secondary/60 p-4 text-xs leading-5 text-muted-foreground">
+              <div className="rounded-2xl border bg-secondary/45 p-4 text-xs leading-5 text-muted-foreground">
                 Войдите под своим именем и личным паролем. Данные сохраняются локально в браузере, а пароль можно поменять в профиле.
               </div>
             </form>

@@ -38,6 +38,13 @@ function translateCategory(category: string) {
   return category;
 }
 
+function toDateTimeLocalValue(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}T09:00`;
+}
+
 function getCategoryMeta(
   category: string,
   taskCategoryIcons: Record<string, TaskCategoryIconKey>
@@ -62,6 +69,7 @@ export default function Tasks() {
   const [plannerView, setPlannerView] = useState<PlannerView>('list');
   const [statusFilter, setStatusFilter] = useState<'all' | TaskStatus>('all');
   const [showCreate, setShowCreate] = useState(false);
+  const [createInitialDueDateTime, setCreateInitialDueDateTime] = useState('');
   const [showCategories, setShowCategories] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -130,6 +138,7 @@ export default function Tasks() {
 
   const dayCompleted = tasksForSelectedDate.filter((task) => getTaskStatusForDate(task, selectedDate) === 'done').length;
   const dayProgress = tasksForSelectedDate.length > 0 ? Math.round((dayCompleted / tasksForSelectedDate.length) * 100) : 0;
+  const selectedDateTimeValue = useMemo(() => toDateTimeLocalValue(selectedDate), [selectedDate]);
 
   const calendarHighlightedDates = useMemo(
     () =>
@@ -166,6 +175,11 @@ export default function Tasks() {
     setDraggedTaskOrderId(null);
   };
 
+  const openCreateDialog = (initialDueDateTime = '') => {
+    setCreateInitialDueDateTime(initialDueDateTime);
+    setShowCreate(true);
+  };
+
   return (
     <div className="space-y-6">
       <motion.section
@@ -186,7 +200,7 @@ export default function Tasks() {
               Категории
             </button>
             <button
-              onClick={() => setShowCreate(true)}
+              onClick={() => openCreateDialog()}
               className="flex items-center gap-2 rounded-2xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
             >
               <Plus className="h-4 w-4" />
@@ -249,7 +263,7 @@ export default function Tasks() {
 
         <TabsContent value="list">
           {groupedByCategory.length === 0 ? (
-            <EmptyTasksState onCreate={() => setShowCreate(true)} />
+            <EmptyTasksState onCreate={() => openCreateDialog()} />
           ) : (
             <div className="space-y-4">
               {groupedByCategory.map(([category, categoryTasks], index) => (
@@ -319,7 +333,7 @@ export default function Tasks() {
 
         <TabsContent value="kanban">
           {todayTasks.length === 0 ? (
-            <EmptyTasksState onCreate={() => setShowCreate(true)} />
+            <EmptyTasksState onCreate={() => openCreateDialog()} />
           ) : (
             <div className="grid gap-4 xl:grid-cols-3">
                 {kanbanColumns.map((column, index) => {
@@ -492,7 +506,7 @@ export default function Tasks() {
                   </h3>
                 </div>
                 <button
-                  onClick={() => setShowCreate(true)}
+                  onClick={() => openCreateDialog(selectedDateTimeValue)}
                   className="rounded-2xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
                 >
                   Добавить на дату
@@ -542,7 +556,11 @@ export default function Tasks() {
         </TabsContent>
       </Tabs>
 
-      <CreateTaskDialog open={showCreate} onClose={() => setShowCreate(false)} />
+      <CreateTaskDialog
+        open={showCreate}
+        onClose={() => setShowCreate(false)}
+        initialDueDateTime={createInitialDueDateTime}
+      />
       <EditTaskDialog task={editingTask} open={!!editingTask} onClose={() => setEditingTask(null)} />
       <ManageCategoriesDialog open={showCategories} onClose={() => setShowCategories(false)} type="task" />
     </div>
@@ -550,16 +568,21 @@ export default function Tasks() {
 }
 
 function CategoryHeader({ category, count }: { category: string; count: number }) {
-  const { taskCategoryIcons } = useApp();
+  const { taskCategoryIcons, taskCategoryImages } = useApp();
   const meta = getCategoryMeta(category, taskCategoryIcons);
+  const categoryImage = taskCategoryImages[category];
   const Icon = meta.icon;
 
   return (
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-3">
-        <div className={`flex h-11 w-11 items-center justify-center rounded-2xl ${meta.bg} ${meta.text}`}>
-          <Icon className="h-5 w-5" />
-        </div>
+        {categoryImage ? (
+          <img src={categoryImage} alt="" className="h-11 w-11 rounded-2xl object-cover" />
+        ) : (
+          <div className={`flex h-11 w-11 items-center justify-center rounded-2xl ${meta.bg} ${meta.text}`}>
+            <Icon className="h-5 w-5" />
+          </div>
+        )}
         <div>
           <h3 className="font-display text-2xl font-bold">{translateCategory(category)}</h3>
           <p className="text-sm text-muted-foreground">{count} задач</p>
@@ -584,8 +607,9 @@ function TaskCard({
   onDelete: () => void;
   onToggleDone: () => void;
 }) {
-  const { taskCategoryIcons } = useApp();
+  const { taskCategoryIcons, taskCategoryImages } = useApp();
   const meta = getCategoryMeta(task.category, taskCategoryIcons);
+  const categoryImage = taskCategoryImages[task.category];
   const Icon = meta.icon;
   const effectiveStatus = getTaskStatusForDate(task, referenceDate);
 
@@ -625,7 +649,11 @@ function TaskCard({
 
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-medium ${meta.bg} ${meta.text}`}>
-              <Icon className="h-3.5 w-3.5" />
+              {categoryImage ? (
+                <img src={categoryImage} alt="" className="h-3.5 w-3.5 rounded-full object-cover" />
+              ) : (
+                <Icon className="h-3.5 w-3.5" />
+              )}
               {translateCategory(task.category)}
             </span>
             <span className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-medium ${task.kind === 'habit' ? 'bg-violet-100 text-violet-700' : 'bg-slate-100 text-slate-700'}`}>

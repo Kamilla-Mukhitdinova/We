@@ -7,7 +7,9 @@ import {
   GripVertical,
   ImagePlus,
   PencilLine,
+  Save,
   Sparkles,
+  StickyNote,
   SunMedium,
   Trash2,
 } from 'lucide-react';
@@ -36,6 +38,7 @@ const DEFAULT_HADITHS = [
 const HERO_LABEL_KEY = 'twp-dashboard-hero-label';
 const HERO_QUOTE_KEY = 'twp-dashboard-hero-quote';
 const HERO_IMAGE_KEY = 'twp-dashboard-hero-image-v2';
+const DASHBOARD_NOTE_KEY = 'twp-dashboard-note';
 const DEFAULT_HERO_LABEL = 'Дэшборд';
 const DEFAULT_HERO_QUOTE =
   'Воистину, Аллах не меняет положения людей, пока они не изменят самих себя. Начни с себя — и Аллах откроет путь к лучшему.';
@@ -81,6 +84,7 @@ export default function Dashboard() {
     toggleTaskForDate,
     customHadiths,
     taskCategoryIcons,
+    taskCategoryImages,
     refreshSharedData,
   } = useApp();
   const [dailyHadith, setDailyHadith] = useState('');
@@ -91,6 +95,7 @@ export default function Dashboard() {
   const [heroLabel, setHeroLabel] = useState(() => localStorage.getItem(HERO_LABEL_KEY) || DEFAULT_HERO_LABEL);
   const [heroQuote, setHeroQuote] = useState(() => localStorage.getItem(HERO_QUOTE_KEY) || DEFAULT_HERO_QUOTE);
   const [heroImage, setHeroImage] = useState(() => localStorage.getItem(HERO_IMAGE_KEY) || defaultHeroImage);
+  const [dashboardNote, setDashboardNote] = useState(() => localStorage.getItem(DASHBOARD_NOTE_KEY) || '');
   const todayDate = new Date();
   const todayKey = toDateKey(todayDate);
 
@@ -245,65 +250,98 @@ export default function Dashboard() {
     setDraggedTaskOrderId(null);
   };
 
+  const saveDashboardNote = () => {
+    const note = dashboardNote.trim();
+    if (!note) {
+      localStorage.removeItem(DASHBOARD_NOTE_KEY);
+      setDashboardNote('');
+      toast.success('Заметка очищена');
+      return;
+    }
+
+    localStorage.setItem(DASHBOARD_NOTE_KEY, note);
+    setDashboardNote(note);
+    toast.success('Заметка сохранена');
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="relative space-y-6">
+      <div className="pointer-events-none absolute -left-24 top-8 -z-10 h-72 w-72 rounded-full bg-emerald-200/45 blur-3xl" />
+      <div className="pointer-events-none absolute -right-28 top-32 -z-10 h-80 w-80 rounded-full bg-rose-200/35 blur-3xl" />
+      <div className="pointer-events-none absolute left-1/3 top-[34rem] -z-10 h-72 w-72 rounded-full bg-amber-200/30 blur-3xl" />
       <motion.section
         initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
-        className="dashboard-hero relative overflow-hidden rounded-[2rem] border bg-card"
+        className="planner-surface overflow-hidden rounded-[1.5rem] border bg-card/92 backdrop-blur"
       >
-        <div className="pointer-events-none absolute -left-16 -top-20 h-52 w-52 rounded-full bg-emerald-300/20 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-24 -right-12 h-56 w-56 rounded-full bg-sky-300/20 blur-3xl" />
-        <div className="grid items-center gap-6 p-8 lg:grid-cols-[1.2fr_0.8fr]">
+        <div className="grid items-center gap-5 p-5 lg:grid-cols-[1fr_280px]">
           <div>
             <div className="flex flex-wrap items-center gap-3">
-              <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-background/85 px-4 py-2 text-xs font-medium text-primary shadow-sm backdrop-blur">
+              <div className="inline-flex items-center gap-2 rounded-2xl border border-primary/20 bg-background/85 px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-primary shadow-sm backdrop-blur">
                 <Sparkles className="h-4 w-4" />
                 {heroLabel}
               </div>
               <button
                 onClick={() => setIsHeroDialogOpen(true)}
-                className="inline-flex items-center gap-2 rounded-full border bg-background/85 px-4 py-2 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur transition-colors hover:bg-secondary hover:text-foreground"
+                className="inline-flex items-center gap-2 rounded-2xl border bg-background/85 px-4 py-2 text-xs font-semibold text-muted-foreground shadow-sm backdrop-blur transition-colors hover:bg-secondary hover:text-foreground"
               >
                 <PencilLine className="h-4 w-4" />
                 Изменить
               </button>
             </div>
-            <h2 className="mt-4 max-w-3xl font-display text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+            <h2 className="mt-4 max-w-3xl font-display text-2xl font-extrabold leading-tight tracking-tight text-foreground sm:text-3xl">
               {heroQuote}
             </h2>
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-2xl border bg-background/75 px-4 py-3 backdrop-blur">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Сегодня</p>
+                <p className="mt-1 text-lg font-extrabold">{format(todayDate, 'd MMMM', { locale: ru })}</p>
+              </div>
+              <div className="rounded-2xl border bg-background/75 px-4 py-3 backdrop-blur">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Фокус</p>
+                <p className="mt-1 text-lg font-extrabold">{myTodayTasks.length}</p>
+              </div>
+              <div className="rounded-2xl border bg-background/75 px-4 py-3 backdrop-blur">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Прогресс</p>
+                <p className="mt-1 text-lg font-extrabold text-primary">{todayPercent}%</p>
+              </div>
+            </div>
           </div>
-          <div className="relative hidden lg:flex justify-center">
-            <div className="absolute inset-0 rounded-full bg-emerald-400/15 blur-3xl" />
-            <img src={heroImage} alt="Dashboard hero" className="relative h-72 w-auto rounded-[2rem] object-cover shadow-xl opacity-95" />
+
+          <div className="relative hidden lg:flex justify-end">
+            <img
+              src={heroImage}
+              alt="Dashboard hero"
+              className="h-48 w-72 rounded-[1.5rem] border object-cover shadow-xl shadow-slate-900/15"
+            />
           </div>
         </div>
       </motion.section>
 
-      <section className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
+      <section className="grid gap-4 xl:grid-cols-[1.18fr_0.82fr]">
         <motion.article
           initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
-          className="rounded-[1.9rem] border bg-card p-6"
+          className="planner-surface rounded-[1.5rem] border bg-card/95 p-6 shadow-xl shadow-slate-900/5"
         >
           <div className="flex items-center justify-between gap-3">
             <div>
-              <h3 className="font-display text-2xl font-bold">Мои задачи и привычки на сегодня</h3>
+              <h3 className="font-display text-3xl font-extrabold">Мои задачи и привычки на сегодня</h3>
               <p className="mt-1 text-sm text-muted-foreground">
                 {myTodayTasks.length} пунктов на {format(new Date(), 'd MMMM', { locale: ru })}
               </p>
             </div>
-            <div className="rounded-2xl bg-primary/10 px-4 py-2 text-sm font-semibold text-primary">
+            <div className="rounded-2xl bg-primary/10 px-4 py-2 text-sm font-extrabold text-primary">
               {todayPercent}%
             </div>
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[1.3rem] bg-secondary/35 px-4 py-3">
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-secondary/35 px-4 py-3">
             <p className="text-sm text-muted-foreground">
               Сегодня выполнено <span className="font-semibold text-foreground">{todayDone}</span> из{' '}
               <span className="font-semibold text-foreground">{myTodayTasks.length}</span>
             </p>
-            <span className="rounded-full bg-background px-3 py-1 text-xs font-semibold text-primary shadow-sm">
+            <span className="rounded-xl bg-background px-3 py-1 text-xs font-bold text-primary shadow-sm">
               {todayPercent}%
             </span>
           </div>
@@ -316,6 +354,7 @@ export default function Dashboard() {
             <div className="mt-5 space-y-4">
               {myTodayByCategory.map(([category, categoryTasks]) => {
                 const meta = getCategoryMeta(category, taskCategoryIcons);
+                const categoryImage = taskCategoryImages[category];
                 const Icon = meta.icon;
                 const doneCount = categoryTasks.filter((task) => getTaskStatusForDate(task, todayDate) === 'done').length;
                 const categoryPercent = categoryTasks.length > 0 ? Math.round((doneCount / categoryTasks.length) * 100) : 0;
@@ -323,7 +362,7 @@ export default function Dashboard() {
                 return (
                   <div
                     key={category}
-                    className="rounded-[1.5rem] border bg-secondary/15 p-4"
+                    className="rounded-[1.5rem] border bg-background/70 p-4"
                     onDragOver={(event) => {
                       if (!categories.includes(category) || !draggedCategory) return;
                       event.preventDefault();
@@ -336,9 +375,13 @@ export default function Dashboard() {
                   >
                     <div className="mb-3 flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className={`flex h-10 w-10 items-center justify-center rounded-2xl ${meta.bg} ${meta.text}`}>
-                          <Icon className="h-4 w-4" />
-                        </div>
+                        {categoryImage ? (
+                          <img src={categoryImage} alt="" className="h-10 w-10 rounded-2xl object-cover" />
+                        ) : (
+                          <div className={`flex h-10 w-10 items-center justify-center rounded-2xl ${meta.bg} ${meta.text}`}>
+                            <Icon className="h-4 w-4" />
+                          </div>
+                        )}
                         <div className="min-w-0">
                           <p className="text-sm font-semibold">{meta.label}</p>
                           <p className="text-xs text-muted-foreground">
@@ -384,7 +427,7 @@ export default function Dashboard() {
                               event.stopPropagation();
                               handleTaskOrderDrop(category, task.id);
                             }}
-                            className="rounded-[1.4rem] bg-secondary/35 p-4"
+                            className="rounded-[1.4rem] bg-secondary/25 p-4"
                           >
                             <div className="flex items-center justify-between gap-3">
                               <div className="flex items-center gap-3">
@@ -427,8 +470,59 @@ export default function Dashboard() {
           <motion.article
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.04 }}
+            className="planner-surface rounded-[1.5rem] border bg-card/95 p-6 shadow-xl shadow-slate-900/5"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h3 className="font-display text-2xl font-bold">Моя заметка</h3>
+              </div>
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                <StickyNote className="h-5 w-5" />
+              </div>
+            </div>
+
+            <Textarea
+              value={dashboardNote}
+              onChange={(event) => setDashboardNote(event.target.value)}
+              placeholder="Напишите короткую заметку, мысль или напоминание на сегодня..."
+              rows={6}
+              className="mt-5 resize-none rounded-[1.3rem] bg-secondary/25"
+            />
+
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+              <p className="text-xs text-muted-foreground">
+                {localStorage.getItem(DASHBOARD_NOTE_KEY) ? 'Сохранено на дэшборде' : 'Пока не сохранено'}
+              </p>
+              <div className="flex items-center gap-2">
+                {localStorage.getItem(DASHBOARD_NOTE_KEY) && (
+                  <button
+                    onClick={() => {
+                      localStorage.removeItem(DASHBOARD_NOTE_KEY);
+                      setDashboardNote('');
+                      toast.success('Заметка удалена');
+                    }}
+                    className="rounded-xl border px-4 py-2 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-destructive"
+                  >
+                    Очистить
+                  </button>
+                )}
+                <button
+                  onClick={saveDashboardNote}
+                  className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+                >
+                  <Save className="h-4 w-4" />
+                  Сохранить
+                </button>
+              </div>
+            </div>
+          </motion.article>
+
+          <motion.article
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.06 }}
-            className="rounded-[1.9rem] border bg-card p-6"
+            className="planner-surface rounded-[1.5rem] border bg-card/95 p-6 shadow-xl shadow-slate-900/5"
           >
             <div className="flex items-center justify-between gap-3">
               <div>

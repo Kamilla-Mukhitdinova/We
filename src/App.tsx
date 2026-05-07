@@ -9,6 +9,7 @@ import AuthGate from "@/components/AuthGate";
 import Layout from "@/components/Layout";
 import Dashboard from "@/pages/Dashboard";
 import Tasks from "@/pages/Tasks";
+import CalendarPage from "@/pages/CalendarPage";
 import Wishes from "@/pages/Wishes";
 import Analytics from "@/pages/Analytics";
 import HomeLife from "@/pages/HomeLife";
@@ -30,6 +31,7 @@ const App = () => (
                 <Routes>
                   <Route path="/" element={<Dashboard />} />
                   <Route path="/tasks" element={<Tasks />} />
+                  <Route path="/calendar" element={<CalendarPage />} />
                   <Route path="/wishes" element={<Wishes />} />
                   <Route path="/home-life" element={<HomeLife />} />
                   <Route path="/menu-book" element={<MenuBook />} />

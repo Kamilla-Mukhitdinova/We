@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Manrope:wght@600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,8 +6,8 @@
 
 @layer base {
   :root {
-    --background: 40 25% 97%;
-    --foreground: 220 20% 14%;
+    --background: 42 32% 97%;
+    --foreground: 224 26% 12%;
 
     --card: 0 0% 100%;
     --card-foreground: 220 20% 14%;
@@ -15,30 +15,30 @@
     --popover: 0 0% 100%;
     --popover-foreground: 220 20% 14%;
 
-    --primary: 175 45% 38%;
+    --primary: 174 64% 32%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 40 18% 93%;
+    --secondary: 42 18% 93%;
     --secondary-foreground: 220 15% 25%;
 
-    --muted: 40 12% 93%;
-    --muted-foreground: 220 10% 50%;
+    --muted: 42 14% 92%;
+    --muted-foreground: 222 12% 47%;
 
-    --accent: 42 70% 52%;
-    --accent-foreground: 30 60% 15%;
+    --accent: 172 42% 88%;
+    --accent-foreground: 174 54% 25%;
 
     --destructive: 0 65% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 40 15% 90%;
-    --input: 40 15% 87%;
+    --border: 42 16% 88%;
+    --input: 42 15% 87%;
     --ring: 175 45% 38%;
 
-    --radius: 1rem;
+    --radius: 0.9rem;
 
     /* Owner colors */
-    --kamilla: 340 55% 52%;
-    --kamilla-light: 340 45% 95%;
+    --kamilla: 340 64% 55%;
+    --kamilla-light: 340 60% 96%;
     --kamilla-foreground: 340 55% 25%;
     --doszhan: 195 55% 40%;
     --doszhan-light: 195 45% 94%;
@@ -57,10 +57,10 @@
     --status-done-light: 160 40% 94%;
 
     /* Ethno accent — used sparingly */
-    --ethno-gold: 42 75% 52%;
-    --ethno-gold-light: 42 60% 94%;
-    --ethno-teal: 175 45% 38%;
-    --ethno-red: 5 60% 48%;
+    --ethno-gold: 42 78% 55%;
+    --ethno-gold-light: 42 70% 95%;
+    --ethno-teal: 174 64% 32%;
+    --ethno-red: 172 42% 54%;
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
@@ -73,20 +73,20 @@
   }
 
   .dark {
-    --background: 220 18% 7%;
-    --foreground: 40 15% 90%;
-    --card: 220 16% 10%;
-    --card-foreground: 40 15% 90%;
-    --popover: 220 16% 10%;
-    --popover-foreground: 40 15% 90%;
-    --primary: 175 45% 42%;
+    --background: 224 26% 8%;
+    --foreground: 210 24% 92%;
+    --card: 224 24% 11%;
+    --card-foreground: 210 24% 92%;
+    --popover: 224 24% 11%;
+    --popover-foreground: 210 24% 92%;
+    --primary: 174 62% 44%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 220 12% 15%;
-    --secondary-foreground: 40 15% 82%;
-    --muted: 220 12% 15%;
-    --muted-foreground: 220 10% 52%;
-    --accent: 42 70% 48%;
-    --accent-foreground: 42 70% 95%;
+    --secondary: 224 18% 16%;
+    --secondary-foreground: 210 20% 84%;
+    --muted: 224 16% 17%;
+    --muted-foreground: 216 14% 62%;
+    --accent: 174 38% 24%;
+    --accent-foreground: 174 38% 88%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
     --border: 220 12% 18%;
@@ -124,11 +124,28 @@
     @apply bg-background text-foreground font-sans antialiased;
     font-family: 'Inter', sans-serif;
     overflow-x: hidden;
+    position: relative;
+    background-color: hsl(42 38% 97%);
     background-image:
-      radial-gradient(circle at top left, hsl(var(--primary) / 0.12), transparent 28%),
-      radial-gradient(circle at top right, hsl(var(--accent) / 0.10), transparent 24%),
-      linear-gradient(180deg, hsl(40 45% 98%), hsl(var(--background)));
+      radial-gradient(circle at 18% 10%, hsl(160 45% 90% / 0.58), transparent 28%),
+      radial-gradient(circle at 88% 8%, hsl(38 84% 91% / 0.52), transparent 30%),
+      linear-gradient(180deg, hsl(42 52% 98%), hsl(42 35% 96%) 62%, hsl(160 26% 96%));
+    background-size: 120% 120%, 120% 120%, 100% 100%;
+    animation: pastel-bg-breathe 28s ease-in-out infinite alternate;
     background-attachment: fixed;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image:
+      linear-gradient(120deg, hsl(0 0% 100% / 0.34), transparent 38%, hsl(0 0% 100% / 0.2) 68%, transparent);
+    background-size: 180% 180%;
+    opacity: 0.55;
+    animation: pastel-light-drift 18s ease-in-out infinite alternate;
   }
 
   img {
@@ -137,7 +154,26 @@
   }
 
   h1, h2, h3 {
-    font-family: 'Playfair Display', serif;
+    font-family: 'Manrope', sans-serif;
+    letter-spacing: 0;
+  }
+}
+
+@keyframes pastel-bg-breathe {
+  0% {
+    background-position: 0% 0%, 100% 8%, 42% 100%, center;
+  }
+  100% {
+    background-position: 18% 12%, 76% 26%, 58% 82%, center;
+  }
+}
+
+@keyframes pastel-light-drift {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 100% 50%;
   }
 }
 
@@ -163,15 +199,8 @@
 /* Thin ethno accent line */
 .ethno-line {
   height: 2px;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    hsl(var(--ethno-gold)) 15%,
-    hsl(var(--ethno-teal)) 50%,
-    hsl(var(--ethno-gold)) 85%,
-    transparent 100%
-  );
-  opacity: 0.4;
+  background: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--accent)), hsl(228 67% 58%));
+  opacity: 0.9;
   border-radius: 1px;
 }
 
@@ -214,9 +243,12 @@
 
 .dashboard-hero {
   background:
-    radial-gradient(circle at 15% 20%, hsl(var(--primary) / 0.18), transparent 26%),
-    radial-gradient(circle at 82% 18%, hsl(var(--accent) / 0.12), transparent 24%),
-    linear-gradient(135deg, hsl(var(--background)), hsl(42 55% 97%));
+    linear-gradient(135deg, hsl(174 64% 32% / 0.10), hsl(12 82% 61% / 0.08) 52%, hsl(228 67% 58% / 0.10)),
+    linear-gradient(180deg, hsl(var(--card)), hsl(var(--card)));
+}
+
+.planner-surface {
+  box-shadow: 0 24px 70px -45px hsl(224 26% 12% / 0.55);
 }
 
 .safe-area-bottom {

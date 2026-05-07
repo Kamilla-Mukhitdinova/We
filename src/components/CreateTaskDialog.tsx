@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useApp } from '@/lib/store';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -18,7 +18,15 @@ const DAYS = [
   { value: 0, label: 'Вс' },
 ];
 
-export function CreateTaskDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function CreateTaskDialog({
+  open,
+  onClose,
+  initialDueDateTime = '',
+}: {
+  open: boolean;
+  onClose: () => void;
+  initialDueDateTime?: string;
+}) {
   const { activeUser, addTask, categories, addCategory } = useApp();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -30,6 +38,12 @@ export function CreateTaskDialog({ open, onClose }: { open: boolean; onClose: ()
   const [newCategory, setNewCategory] = useState('');
   const [newCategoryIcon, setNewCategoryIcon] = useState<TaskCategoryIconKey | ''>('');
   const [showNewCat, setShowNewCat] = useState(false);
+
+  useEffect(() => {
+    if (open && initialDueDateTime) {
+      setDueDateTime(initialDueDateTime);
+    }
+  }, [initialDueDateTime, open]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
