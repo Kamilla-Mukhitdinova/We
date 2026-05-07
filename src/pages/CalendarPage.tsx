@@ -190,9 +190,10 @@ export default function CalendarPage() {
 
                 return (
                   <button
+                    type="button"
                     key={day.toISOString()}
                     onClick={() => openDay(day)}
-                    className={`group flex min-h-32 flex-col border-r border-b border-white/70 p-2 text-left transition-colors hover:bg-white/75 ${
+                    className={`group flex min-h-32 min-w-0 flex-col overflow-hidden border-r border-b border-white/70 p-2 text-left transition-colors hover:bg-white/75 ${
                       isSelected ? 'bg-emerald-50/75 shadow-[inset_0_0_0_1px_hsl(150_48%_68%/0.55)]' : ''
                     } ${inMonth ? (weekend ? 'bg-white/38' : 'bg-white/58') : 'bg-white/24 text-muted-foreground'} [&:nth-child(7n)]:border-r-0 [&:nth-last-child(-n+7)]:border-b-0`}
                   >
@@ -211,13 +212,14 @@ export default function CalendarPage() {
                         {format(day, 'd')}
                       </span>
                     </div>
-                    <div className="mt-2 min-w-0 space-y-1">
+                    <div className="mt-2 w-full min-w-0 space-y-1 overflow-hidden">
                       {dayTasks.slice(0, 2).map((task) => {
                         const isDone = getTaskStatusForDate(task, day) === 'done';
                         return (
                           <div
                             key={task.id}
-                            className={`truncate rounded-full px-2 py-0.5 text-xs font-semibold ${
+                            title={task.title}
+                            className={`block w-full max-w-full truncate rounded-full px-2 py-0.5 text-xs font-semibold ${
                               isDone
                                 ? 'bg-emerald-100/80 text-emerald-700 line-through'
                                 : 'bg-emerald-100/85 text-emerald-800'
@@ -229,7 +231,7 @@ export default function CalendarPage() {
                         );
                       })}
                       {dayTasks.length > 2 && (
-                        <div className="rounded-full bg-white/80 px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                        <div className="block w-full truncate rounded-full bg-white/80 px-2 py-0.5 text-xs font-medium text-muted-foreground">
                           +{dayTasks.length - 2} еще
                         </div>
                       )}

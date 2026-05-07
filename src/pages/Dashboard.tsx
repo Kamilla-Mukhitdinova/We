@@ -266,9 +266,6 @@ export default function Dashboard() {
 
   return (
     <div className="relative space-y-6">
-      <div className="pointer-events-none absolute -left-24 top-8 -z-10 h-72 w-72 rounded-full bg-emerald-200/45 blur-3xl" />
-      <div className="pointer-events-none absolute -right-28 top-32 -z-10 h-80 w-80 rounded-full bg-rose-200/35 blur-3xl" />
-      <div className="pointer-events-none absolute left-1/3 top-[34rem] -z-10 h-72 w-72 rounded-full bg-amber-200/30 blur-3xl" />
       <motion.section
         initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
