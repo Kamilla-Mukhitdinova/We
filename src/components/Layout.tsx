@@ -35,7 +35,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-background transition-colors duration-300">
       {/* Header */}
-      <header className="sticky top-0 z-50 border-b bg-card/75 shadow-sm shadow-slate-900/5 backdrop-blur-xl">
+      <header className="sticky top-0 z-50 bg-card/75 shadow-sm shadow-slate-900/5 backdrop-blur-xl">
         <div className="container flex min-h-16 items-center justify-between gap-4 py-2">
           {/* Logo + Nav */}
           <div className="flex min-w-0 items-center gap-5">

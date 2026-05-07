@@ -196,14 +196,6 @@
   z-index: 1;
 }
 
-/* Thin ethno accent line */
-.ethno-line {
-  height: 2px;
-  background: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--accent)), hsl(228 67% 58%));
-  opacity: 0.9;
-  border-radius: 1px;
-}
-
 /* Legacy divider */
 .ethno-divider {
   height: 2px;
